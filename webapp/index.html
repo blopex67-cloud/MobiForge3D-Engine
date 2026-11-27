@@ -34,27 +34,19 @@
     </section>
     <main id="editor-layout" class="layout hidden">
       <aside class="panel left-panel">
-        <div class="panel-heading"><span>ESCENA</span><button id="add-menu" class="icon-button" aria-label="Añadir objeto"><i data-lucide="plus"></i></button></div>
+        <div class="panel-heading"><span>ESCENA</span><button id="new-scene-top" class="icon-button" title="Nueva escena"><i data-lucide="plus"></i></button></div>
         <button id="back-projects" class="scene-name"><i data-lucide="chevron-left"></i><span>Todos los proyectos</span></button>
-        <div class="scene-tools"><select id="scene-select" aria-label="Escena actual"></select><button id="new-scene-button" class="icon-button" title="Nueva escena"><i data-lucide="plus"></i></button></div>
+        <div class="scene-tools"><select id="scene-select" aria-label="Escena actual"></select><button id="node-menu-button" class="icon-button add-node-button" title="Añadir nodo"><i data-lucide="plus"></i></button></div>
+        <div id="node-picker" class="node-picker hidden"><div class="node-picker-head"><b>Añadir nodo</b><button id="close-node-picker" class="icon-button" aria-label="Cerrar"><i data-lucide="x"></i></button></div><div class="node-picker-tabs"><button class="node-picker-tab active" data-node-group="3d">3D</button><button class="node-picker-tab" data-node-group="2d">2D / HUD</button></div><div id="node-picker-list" class="node-picker-list"></div></div>
         <div class="divider"></div>
         <div class="panel-heading"><span>JERARQUÍA</span><span id="object-count" class="count">0</span></div>
         <div id="hierarchy" class="hierarchy"></div>
-        <div class="left-bottom"><div class="divider"></div><div class="eyebrow">AÑADIR A LA ESCENA</div>
-          <button class="wide-button" data-add="Cube"><i data-lucide="box"></i><span>Cubo</span></button>
-          <button class="wide-button" data-add="Sphere"><i data-lucide="circle"></i><span>Esfera</span></button>
-          <button class="wide-button" data-add="Cylinder"><i data-lucide="cylinder"></i><span>Cilindro</span></button>
-          <button class="wide-button" data-add="Light"><i data-lucide="sun"></i><span>Luz</span></button>
-          <button class="wide-button" data-add="Sprite"><i data-lucide="image"></i><span>Sprite 2D</span></button>
-          <button class="wide-button" data-add="Button2D"><i data-lucide="mouse-pointer-2"></i><span>Botón HUD</span></button>
-          <button class="wide-button" data-add="Camera"><i data-lucide="video"></i><span>Cámara</span></button>
-          <button class="wide-button" data-add="Audio"><i data-lucide="volume-2"></i><span>Audio</span></button>
-          <button class="wide-button" data-add="Node3D"><i data-lucide="boxes"></i><span>Nodo 3D</span></button>
-          <button class="wide-button" data-add="CharacterBody"><i data-lucide="person-standing"></i><span>CharacterBody</span></button>
-          <button class="wide-button" data-add="Label2D"><i data-lucide="type"></i><span>Texto HUD</span></button>
-          <label class="wide-button import-button"><i data-lucide="upload"></i><span>Importar modelo / imagen</span><input id="asset-input" type="file" accept=".glb,.gltf,.png,.jpg,.jpeg,.webp" multiple hidden></label>
+        <div class="left-bottom"><div class="divider"></div><div class="eyebrow">ARCHIVOS</div>
+          <label class="wide-button import-button"><i data-lucide="upload"></i><span>Importar GLB / imagen</span><input id="asset-input" type="file" accept=".glb,.png,.jpg,.jpeg,.webp" multiple hidden></label>
+          <small class="import-note">GLB con recursos incluidos · imágenes PNG/JPG/WebP</small>
         </div>
       </aside>
+      <div class="panel-resizer" id="resize-left" role="separator" aria-label="Cambiar ancho del panel de escena"></div>
       <section class="center-panel">
         <nav class="toolbar">
           <button class="tool active" data-mode="translate" title="Mover"><i data-lucide="move-3d"></i><span>Mover</span></button>
@@ -66,17 +58,23 @@
         <div id="viewport" class="viewport"><canvas id="scene-canvas"></canvas><div class="viewport-badge"><i data-lucide="box"></i><span id="viewport-label">VISTA 3D</span><em>• TOUCH</em></div><div id="empty-hint" class="empty-hint">Toca un objeto o crea uno nuevo</div>
           <div id="play-controls" class="play-controls hidden"><div class="move-pad" id="move-pad"><span class="pad-center"></span><span class="pad-label north">▲</span><span class="pad-label south">▼</span><span class="pad-label west">◀</span><span class="pad-label east">▶</span></div><div class="look-hint">Arrastra aquí para mirar</div><button id="exit-play" class="exit-play"><i data-lucide="square"></i> Salir</button></div>
         </div>
-        <div class="bottom-dock"><button class="dock-tab selected" data-tab="scene"><i data-lucide="layers-3"></i> Escena</button><button class="dock-tab" data-tab="lua"><i data-lucide="code-xml"></i> Script Lua</button><span class="dock-spacer"></span><span id="status-text" class="status-dot">● LISTO</span></div>
+        <div class="bottom-dock"><span class="dock-tab selected"><i data-lucide="layers-3"></i> Escena</span><span class="dock-spacer"></span><span id="status-text" class="status-dot">● LISTO</span></div>
         <section id="lua-panel" class="lua-panel hidden"><div class="lua-head"><div><b>Script Lua</b><span>Lua 5.3 · API MobiForge</span></div><div class="lua-actions"><button id="lua-example" class="button subdued small">Ejemplo</button><button id="lua-run" class="button run small"><i data-lucide="play"></i> Ejecutar</button><button id="lua-close" class="icon-button"><i data-lucide="x"></i></button></div></div><textarea id="lua-code" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off">-- Script Lua para la escena\nlocal objeto = engine.add_cube("Cubo Lua")\nengine.set_selected_position(0, 1, 0)\nprint("Objeto creado:", objeto)\n</textarea><pre id="lua-output" class="lua-output">Listo. Usa engine.add_cube(nombre), engine.add_sphere(nombre), engine.select(nombre), engine.set_selected_position(x, y, z) y print(...).</pre></section>
       </section>
+      <div class="panel-resizer" id="resize-right" role="separator" aria-label="Cambiar ancho del inspector"></div>
       <aside class="panel inspector-panel"><div class="panel-heading"><span>INSPECTOR</span><button id="delete-button" class="icon-button danger" title="Eliminar selección"><i data-lucide="trash-2"></i></button></div>
         <label class="field-label" for="object-name">Objeto seleccionado</label><input id="object-name" class="text-field" value="Sin selección" />
         <div class="divider"></div><div class="section-title">TRANSFORMACIÓN</div>
         <div class="axis-row"><span class="axis x-axis">X</span><label>Posición</label><input id="px" type="number" step="0.1" value="0" /><input id="py" type="number" step="0.1" value="0" /><input id="pz" type="number" step="0.1" value="0" /></div>
         <div class="axis-row"><span class="axis r-axis">↻</span><label>Rotación °</label><input id="rx" type="number" step="5" value="0" /><input id="ry" type="number" step="5" value="0" /><input id="rz" type="number" step="5" value="0" /></div>
         <div class="axis-row"><span class="axis s-axis">↗</span><label>Escala</label><input id="sx" type="number" step="0.1" value="1" /><input id="sy" type="number" step="0.1" value="1" /><input id="sz" type="number" step="0.1" value="1" /></div>
-        <div class="divider"></div><div class="section-title">MATERIAL</div><label class="field-label" for="material-color">Color</label><div class="color-row"><input id="material-color" type="color" value="#44d7a0"/><span id="color-value">#44D7A0</span></div>
-        <div class="divider"></div><div class="section-title">SCRIPT DEL NODO</div><textarea id="node-script" class="node-script" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" placeholder="-- Lua de este nodo"></textarea><button id="run-node-script" class="button run small node-run"><i data-lucide="play"></i><span>Ejecutar script</span></button><div class="inspector-foot">El script se guarda con la escena y se ejecuta al iniciar Probar.</div>
+        <div class="divider"></div><div class="section-title">MATERIAL</div><div class="material-head"><select id="material-select" aria-label="Material del objeto"><option value="">Material propio</option></select><button id="new-material" class="icon-button" title="Crear material"><i data-lucide="plus"></i></button></div>
+        <label class="field-label" for="material-name">Nombre</label><input id="material-name" class="text-field" placeholder="Material" disabled />
+        <label class="field-label" for="material-color">Color base</label><div class="color-row"><input id="material-color" type="color" value="#44d7a0" disabled/><span id="color-value">#44D7A0</span></div>
+        <label class="field-label" for="material-roughness">Rugosidad</label><div class="range-row"><input id="material-roughness" type="range" min="0" max="1" step="0.01" value="0.5" disabled/><span id="roughness-value">0.50</span></div>
+        <label class="field-label" for="material-metalness">Metallicidad</label><div class="range-row"><input id="material-metalness" type="range" min="0" max="1" step="0.01" value="0.1" disabled/><span id="metalness-value">0.10</span></div>
+        <div id="hud-properties" class="hud-properties hidden"><div class="divider"></div><div class="section-title">CONTENIDO HUD</div><label class="field-label" for="hud-text">Texto visible</label><input id="hud-text" class="text-field" value="" placeholder="Escribe el texto" /></div>
+        <div class="divider"></div><div class="section-title">SCRIPT DEL NODO</div><textarea id="node-script" class="node-script" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" placeholder="-- Lua de este nodo"></textarea><button id="run-node-script" class="button run small node-run"><i data-lucide="play"></i><span>Ejecutar script</span></button><div class="inspector-foot">Lua del nodo seleccionado. Se guarda con la escena.</div>
       </aside>
     </main>
   </div>
