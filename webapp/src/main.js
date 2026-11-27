@@ -275,57 +275,23 @@ function safeFilePart(value){return String(value||'archivo').normalize('NFD').re
 async function deliverExportZip(blob,filename){const fallback=()=>{const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;a.style.display='none';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);};if(window.cordova?.file?.cacheDirectory&&window.resolveLocalFileSystemURL&&window.plugins?.socialsharing?.shareWithOptions){try{await new Promise((resolve,reject)=>window.resolveLocalFileSystemURL(window.cordova.file.cacheDirectory,dir=>dir.getFile(filename,{create:true},entry=>entry.createWriter(writer=>{writer.onwriteend=()=>window.plugins.socialsharing.shareWithOptions({message:'Paquete de juego MobiForge listo para compilar el APK',files:[entry.nativeURL],chooserTitle:'Guardar paquete del juego'},resolve,reject);writer.onerror=reject;writer.write(blob);},reject),reject),reject));return 'shared';}catch(err){console.warn('No se pudo abrir el menú para guardar; se probará la descarga web.',err);}}fallback();return 'download';}
 async function exportProjectPackage(){
   if(!activeProject)return;
-  const button=$('export-game-button');
-  button.disabled=true;
-  button.dataset.label=button.innerHTML;
-  button.innerHTML='<span>Exportando…</span>';
+  const button=$('export-game-button');button.disabled=true;button.dataset.label=button.innerHTML;button.innerHTML='<span>Exportando…</span>';
   try{
     saveScene();
     const scenes=[];
-    for(const sc of activeProject.scenes||[]){
-      let records=[];
-      try{records=JSON.parse(localStorage.getItem(sceneStorageKey(activeProject,sc.id))||'[]');}catch{}
-      scenes.push({id:sc.id,name:sc.name,objects:Array.isArray(records)?records:[]});
-    }
+    for(const sc of activeProject.scenes||[]){let records=[];try{records=JSON.parse(localStorage.getItem(sceneStorageKey(activeProject,sc.id))||'[]');}catch{}scenes.push({id:sc.id,name:sc.name,objects:Array.isArray(records)?records:[]});}
     const assetRefs=new Map();
-    for(const sc of scenes)for(const rec of sc.objects){
-      if(rec.assetKey)assetRefs.set(rec.assetKey,rec.assetName||rec.name||'asset.bin');
-      if(rec.hudImageAssetKey)assetRefs.set(rec.hudImageAssetKey,rec.hudImageName||'hud-image.png');
-    }
-    const zip=new JSZip();
-    zip.file('package.json',exportPackage);
-    zip.file('index.html',exportRuntimeHtml);
-    zip.file('src/main.js',exportRuntimeMain);
-    zip.file('src/style.css',exportRuntimeCss);
-    zip.file('.github/workflows/build-android-apk.yml',exportWorkflow);
-    zip.file('README.md',exportReadme);
+    for(const sc of scenes)for(const rec of sc.objects){if(rec.assetKey)assetRefs.set(rec.assetKey,rec.assetName||rec.name||'asset.bin');if(rec.hudImageAssetKey)assetRefs.set(rec.hudImageAssetKey,rec.hudImageName||'hud-image.png');}
+    const zip=new JSZip();zip.file('package.json',exportPackage);zip.file('index.html',exportRuntimeHtml);zip.file('src/main.js',exportRuntimeMain);zip.file('src/style.css',exportRuntimeCss);zip.file('.github/workflows/build-android-apk.yml',exportWorkflow);zip.file('README.md',exportReadme);
     zip.file('vite.config.js',"import { defineConfig } from 'vite';\nexport default defineConfig({base:'./',build:{target:'es2020',outDir:'dist',emptyOutDir:true}});\n");
-    const assetPaths={};
-    let assetIndex=0;
-    for(const [key,originalName] of assetRefs){
-      const blob=await getAsset(key);
-      if(!blob)throw new Error(`Falta el recurso local «${originalName}». Reimpórtalo antes de exportar.`);
-      const filename=`asset-${String(++assetIndex).padStart(3,'0')}-${safeFilePart(originalName)}`;
-      const path=`assets/${filename}`;
-      assetPaths[key]=path;
-      zip.file(`public/${path}`,blob);
-    }
+    const assetPaths={};let assetIndex=0;
+    for(const [key,originalName] of assetRefs){const blob=await getAsset(key);if(!blob)throw new Error(`Falta el recurso local «${originalName}». Reimpórtalo antes de exportar.`);const filename=`asset-${String(++assetIndex).padStart(3,'0')}-${safeFilePart(originalName)}`;const path=`assets/${filename}`;assetPaths[key]=path;zip.file(`public/${path}`,blob);}
     const game={format:'mobiforge-game-v1',name:activeProject.name||'Mi juego',template:activeProject.template||'blank',startSceneId:'main',playerSceneId:'player',materials:projectMaterials().map(m=>({...m})),scenes,assets:assetPaths};
     zip.file('game.json',JSON.stringify(game,null,2));
-    const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:5}});
-    const filename=`${safeFilePart(activeProject.name||'Mi-juego')}-proyecto-APK.zip`;
-    const delivery=await deliverExportZip(blob,filename);
-    $('status-text').textContent='● PROYECTO PARA APK LISTO';
-    await ui.notify(`Exporté «${activeProject.name||'Mi juego'}» con ${scenes.length} escenas y ${assetRefs.size} recursos.${delivery==='shared'?' Se abrió el menú para guardar o compartir el ZIP.':''}\n\nDescomprime el ZIP y sube todos sus archivos y carpetas —incluida .github/workflows— a un repositorio privado o nuevo de GitHub. El workflow está ya puesto en la ruta correcta y compilará la APK del juego al hacer push. Después descarga Juego-Android-APK desde Actions. No subas el ZIP como un solo archivo.`);
-  }catch(err){
-    console.error('Exportación del juego fallida',err);
-    $('status-text').textContent='● ERROR AL EXPORTAR';
-    await ui.notify(`No pude exportar el proyecto: ${err.message||err}`);
-  }finally{
-    button.disabled=false;
-    button.innerHTML=button.dataset.label||'<i data-lucide="box"></i><span>Exportar APK</span>';
-    createIcons({icons});
-  }
+    const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:5}});const filename=`${safeFilePart(activeProject.name||'Mi-juego')}-proyecto-APK.zip`;const delivery=await deliverExportZip(blob,filename);
+    $('status-text').textContent='● PROYECTO PARA APK LISTO';await ui.notify(`Exporté «${activeProject.name||'Mi juego'}» con ${scenes.length} escenas y ${assetRefs.size} recursos.${delivery==='shared'?' Se abrió el menú para guardar o compartir el ZIP.':''}\n\nDescomprime el ZIP y sube todos sus archivos y carpetas —incluida .github/workflows— a la raíz del repositorio de GitHub. El workflow ya está en la ruta correcta y Actions compilará la APK del juego al hacer push. Después descarga el artefacto Juego-Android-APK. No subas el ZIP como un solo archivo.`);
+  }catch(err){console.error('Exportación del juego fallida',err);$('status-text').textContent='● ERROR AL EXPORTAR';await ui.notify(`No pude exportar el proyecto: ${err.message||err}`);}
+  finally{button.disabled=false;button.innerHTML=button.dataset.label||'<i data-lucide="box"></i><span>Exportar APK</span>';createIcons({icons});}
 }
 $('export-game-button').addEventListener('click',exportProjectPackage);
 function resize(){const w=Math.max(1,viewport.clientWidth),h=Math.max(1,viewport.clientHeight);renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();const aspect=w/h;hudCamera.left=-w/2;hudCamera.right=w/2;hudCamera.top=h/2;hudCamera.bottom=-h/2;hudCamera.updateProjectionMatrix();}
@@ -361,7 +327,7 @@ function executeLua(source,currentNode=null) {
   else { if (!out.textContent) log('Script ejecutado sin errores.'); $('status-text').textContent='● LUA OK'; }
   lua.lua_close(L);
 }
-$('lua-example').addEventListener('click',()=>{if(!selected)return;$('lua-code').value=`-- Script de ${selected.name}\nprint("Nodo activo:", engine.node_name())`;selected.userData.script=$('lua-code').value;markDirty();});
+$('lua-example').addEventListener('click',()=>{if(!selected)return;$('lua-code').value=`-- Mueve este nodo 0.5 unidades hacia X cada vez que pulses Ejecutar\nengine.move_node(0.5, 0, 0)\nprint("Nodo movido:", engine.node_name())`;selected.userData.script=$('lua-code').value;markDirty();});
 $('lua-close').addEventListener('click', () => toggleLua(false));
 function toggleLua(open){$('lua-panel').classList.toggle('hidden',!open);setTimeout(resize,80);}
 
@@ -503,3 +469,16 @@ canvas.addEventListener('pointermove',e=>{if(!playMode||!downPoint||!e.buttons)r
 createIcons({icons});renderProjects();setProjectHeader();
 window.addEventListener('pagehide',()=>{if(activeProject&&!playMode)saveScene();});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&activeProject&&!playMode)saveScene();});
+
+// ===== Menús superiores y atajos de herramientas (estilo Godot) =====
+function closeMenus(){document.querySelectorAll('.menu-list').forEach(m=>m.classList.add('hidden'));}
+document.querySelectorAll('[data-menu]').forEach(btn=>btn.addEventListener('click',e=>{e.stopPropagation();const menu=$('menu-'+btn.dataset.menu);const open=menu.classList.contains('hidden');closeMenus();menu.classList.toggle('hidden',!open);}));
+document.querySelectorAll('[data-trigger]').forEach(item=>item.addEventListener('click',()=>{closeMenus();$(item.dataset.trigger).click();}));
+document.addEventListener('click',closeMenus);
+window.addEventListener('keydown',e=>{
+  if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)||playMode)return;
+  const modes={KeyW:'translate',KeyE:'rotate',KeyR:'scale'};const mode=modes[e.code];
+  if(!mode)return;
+  transform.setMode(mode);
+  document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));
+});

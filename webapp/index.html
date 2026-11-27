@@ -2,79 +2,235 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="theme-color" content="#10151d" />
-  <title>Editor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>MobiForge</title>
 </head>
 <body>
-  <div id="app">
-    <header class="topbar projects-view">
-      <nav class="workspace-tabs" aria-label="Áreas del editor">
-        <button class="workspace-tab selected" data-area="projects"><i data-lucide="folder-kanban"></i><span>Proyectos</span></button>
-        <button class="workspace-tab" data-area="2d"><i data-lucide="panels-top-left"></i><span>2D</span></button>
-        <button class="workspace-tab" data-area="3d"><i data-lucide="box"></i><span>3D</span></button>
-        <button class="workspace-tab" data-area="script"><i data-lucide="code-xml"></i><span>Script</span></button>
-      </nav>
-      <span id="project-name-top" hidden></span><span id="save-state" hidden></span>
-      <div class="top-actions"><button id="import-model-top" type="button" class="button subdued import-top-button" title="Importar modelo 3D o imagen" aria-label="Importar modelo 3D o imagen"><i data-lucide="upload"></i><span>Importar</span></button><input id="asset-input" type="file" accept="*/*" multiple hidden><button id="save-button" class="icon-button" title="Guardar" aria-label="Guardar"><i data-lucide="save"></i></button><button id="export-game-button" class="button subdued export-game-button" title="Preparar paquete para compilar el APK del juego"><i data-lucide="box"></i><span>Exportar APK</span></button><button id="play-button" class="button play"><i data-lucide="play"></i><span>Probar</span></button></div>
-    </header>
-    <section id="project-home" class="project-home">
-      <div class="home-wrap">
-        <div class="welcome-row"><div><h1>Proyectos</h1></div><button id="new-project-button" class="button create-project"><i data-lucide="plus"></i><span>Nuevo</span></button></div>
-        <div class="home-grid">
-          <button class="project-card new-card" data-template="blank"><span class="card-art art-blank"><i data-lucide="plus"></i></span><span class="card-meta"><b>Proyecto vacío</b><small>Empieza desde cero</small></span></button>
-          <button class="project-card" data-template="third"><span class="card-art art-third"><i data-lucide="person-standing"></i><em>3D</em></span><span class="card-meta"><b>Aventura en tercera persona</b><small>Personaje, escenario y controles</small></span><span class="template-pill">PRINCIPIANTE</span></button>
-          <button class="project-card" data-template="first"><span class="card-art art-first"><i data-lucide="crosshair"></i><em>FPS</em></span><span class="card-meta"><b>Exploración primera persona</b><small>Cámara y escena inicial</small></span><span class="template-pill">PRINCIPIANTE</span></button>
+<div id="app">
+
+  <!-- Barra superior: menús, espacios de trabajo y acciones (estilo Godot 4) -->
+  <header class="topbar projects-view" id="topbar">
+    <div class="topbar-left">
+      <div class="brand"><span class="brand-mark">◆</span><span>MobiForge</span></div>
+      <span id="project-name-top" class="project-name">Elige un proyecto</span>
+      <nav class="menus editor-only">
+        <div class="menu">
+          <button class="menu-button" data-menu="proyecto">Proyecto</button>
+          <div class="menu-list hidden" id="menu-proyecto">
+            <button data-trigger="back-projects"><i data-lucide="folder-kanban"></i><span>Volver a proyectos</span></button>
+            <button data-trigger="save-button"><i data-lucide="save"></i><span>Guardar</span></button>
+            <button data-trigger="import-model-top"><i data-lucide="upload"></i><span>Importar modelo o imagen</span></button>
+            <button data-trigger="export-game-button"><i data-lucide="box"></i><span>Exportar APK</span></button>
+          </div>
         </div>
-        <div class="projects-heading"><div><h2>Recientes</h2></div><span id="projects-count" class="count">0 proyectos</span></div>
-        <div id="recent-projects" class="recent-projects"></div>
+        <div class="menu">
+          <button class="menu-button" data-menu="escena">Escena</button>
+          <div class="menu-list hidden" id="menu-escena">
+            <button data-trigger="new-scene-top"><i data-lucide="plus"></i><span>Nueva escena</span></button>
+            <button data-trigger="insert-scene-button"><i data-lucide="layers-3"></i><span>Insertar escena</span></button>
+            <button data-trigger="node-menu-button"><i data-lucide="boxes"></i><span>Añadir nodo</span></button>
+          </div>
+        </div>
+      </nav>
+    </div>
+
+    <nav class="workspace-tabs editor-only" aria-label="Espacios de trabajo">
+      <button class="workspace-tab" data-area="2d">2D</button>
+      <button class="workspace-tab selected" data-area="3d">3D</button>
+      <button class="workspace-tab" data-area="script">Script</button>
+    </nav>
+
+    <div class="topbar-right">
+      <button class="tb-button editor-only" id="import-model-top"><i data-lucide="upload"></i><span>Importar</span></button>
+      <button class="tb-icon editor-only" id="save-button" title="Guardar"><i data-lucide="save"></i></button>
+      <button class="tb-button editor-only" id="export-game-button"><i data-lucide="box"></i><span>Exportar APK</span></button>
+      <button class="tb-button play editor-only" id="play-button"><i data-lucide="play"></i><span>Probar</span></button>
+    </div>
+  </header>
+
+  <!-- Pantalla de proyectos -->
+  <main id="project-home" class="project-home">
+    <div class="home-wrap">
+      <section class="welcome-row">
+        <div>
+          <p class="accent-text">BIENVENIDO</p>
+          <h1>Crea tu juego</h1>
+          <p>Elige una plantilla o abre un proyecto reciente.</p>
+        </div>
+        <button class="create-project" id="new-project-button"><i data-lucide="plus"></i><span>Nuevo proyecto</span></button>
+      </section>
+
+      <section class="home-grid">
+        <button class="project-card" data-template="blank">
+          <span class="card-art art-blank"><i data-lucide="box"></i><em>3D</em></span>
+          <span class="card-meta"><b>Proyecto vacío</b><small>Empieza desde cero con una escena limpia</small></span>
+        </button>
+        <button class="project-card" data-template="third">
+          <span class="card-art art-third"><i data-lucide="person-standing"></i><em>3P</em></span>
+          <span class="card-meta"><b>Aventura en tercera persona</b><small>Personaje controlable con cámara de seguimiento</small></span>
+        </button>
+        <button class="project-card" data-template="first">
+          <span class="card-art art-first"><i data-lucide="crosshair"></i><em>1P</em></span>
+          <span class="card-meta"><b>Exploración en primera persona</b><small>Cámara en primera persona para recorrer el escenario</small></span>
+        </button>
+      </section>
+
+      <div class="projects-heading">
+        <h2>Proyectos recientes</h2>
+        <span class="count" id="projects-count">0 proyectos</span>
+      </div>
+      <div class="recent-projects" id="recent-projects"></div>
+    </div>
+  </main>
+
+  <!-- Editor -->
+  <div id="editor-layout" class="editor-layout hidden">
+
+    <!-- Dock izquierdo: árbol de escena -->
+    <aside class="left-panel dock">
+      <header class="dock-head"><span class="dock-title">Escena</span></header>
+      <button class="back-link" id="back-projects"><i data-lucide="chevron-left"></i><span>Todos los proyectos</span></button>
+      <div class="scene-tools">
+        <select id="scene-select" aria-label="Escena"></select>
+        <button class="icon-btn" id="new-scene-top" title="Nueva escena"><i data-lucide="plus"></i></button>
+      </div>
+      <div class="dock-toolbar">
+        <button class="icon-btn" id="node-menu-button" title="Añadir nodo"><i data-lucide="plus"></i></button>
+        <button class="icon-btn" id="insert-scene-button" title="Insertar escena"><i data-lucide="layers-3"></i></button>
+        <button class="icon-btn danger" id="delete-button" title="Eliminar nodo"><i data-lucide="trash-2"></i></button>
+      </div>
+      <div class="hierarchy-head"><span>Nodos</span><span class="count" id="object-count">0</span></div>
+      <div class="hierarchy" id="hierarchy"></div>
+
+      <section class="node-picker hidden" id="node-picker">
+        <div class="node-picker-head">
+          <button class="node-picker-tab active" data-node-group="3d">3D</button>
+          <button class="node-picker-tab" data-node-group="2d">2D</button>
+          <button class="icon-btn" id="close-node-picker" title="Cerrar"><i data-lucide="x"></i></button>
+        </div>
+        <div class="node-picker-list" id="node-picker-list"></div>
+      </section>
+    </aside>
+
+    <div id="resize-left" class="resize-bar" title="Redimensionar"></div>
+
+    <!-- Centro: viewport, herramientas y script -->
+    <section class="center-panel">
+      <div class="viewport-toolbar">
+        <button class="tool active" data-mode="translate" title="Mover (W)"><i data-lucide="move-3d"></i><span>Mover</span></button>
+        <button class="tool" data-mode="rotate" title="Rotar (E)"><i data-lucide="rotate-3d"></i><span>Rotar</span></button>
+        <button class="tool" data-mode="scale" title="Escalar (R)"><i data-lucide="scaling"></i><span>Escalar</span></button>
+        <span class="tb-sep"></span>
+        <button class="tool" id="focus-button" title="Enfocar selección (F)"><i data-lucide="scan-eye"></i></button>
+        <span class="toolbar-spacer"></span>
+        <span id="viewport-hint" class="viewport-hint"></span>
+      </div>
+
+      <div id="viewport" class="viewport">
+        <canvas id="scene-canvas"></canvas>
+        <div class="viewport-badge"><b id="viewport-label">VISTA 3D</b></div>
+        <div id="empty-hint" class="empty-hint" hidden></div>
+
+        <div id="play-controls" class="play-controls hidden">
+          <div id="move-pad" class="move-pad">
+            <span class="pad-center"></span>
+            <span class="pad-label north">▲</span>
+            <span class="pad-label south">▼</span>
+            <span class="pad-label west">◀</span>
+            <span class="pad-label east">▶</span>
+          </div>
+          <span class="look-hint">Arrastra para mirar</span>
+          <button id="exit-play" class="exit-play"><i data-lucide="square"></i><span>Salir</span></button>
+        </div>
+
+        <section id="lua-panel" class="lua-panel hidden">
+          <div class="lua-head">
+            <b>Script</b>
+            <div class="lua-actions">
+              <button class="button" id="lua-example">Ejemplo</button>
+              <button class="button run" id="lua-run"><i data-lucide="play"></i><span>Ejecutar</span></button>
+              <button class="icon-btn" id="lua-close" title="Cerrar"><i data-lucide="x"></i></button>
+            </div>
+          </div>
+          <textarea id="lua-code" spellcheck="false" placeholder="-- Escribe Lua aquí"></textarea>
+          <pre id="lua-output" class="lua-output"></pre>
+        </section>
       </div>
     </section>
-    <main id="editor-layout" class="layout hidden">
-      <aside class="panel left-panel">
-        <div class="panel-heading"><span>ESCENA</span><button id="new-scene-top" class="icon-button" title="Nueva escena"><i data-lucide="plus"></i></button></div>
-        <button id="back-projects" class="scene-name"><i data-lucide="chevron-left"></i><span>Todos los proyectos</span></button>
-        <div class="scene-tools"><select id="scene-select" aria-label="Escena actual"></select><button id="insert-scene-button" class="icon-button" title="Insertar una escena existente como copia" aria-label="Insertar escena"><i data-lucide="layers-3"></i></button><button id="node-menu-button" class="icon-button add-node-button" title="Añadir nodo"><i data-lucide="plus"></i></button></div>
-        <div id="node-picker" class="node-picker hidden"><div class="node-picker-head"><b>Añadir nodo</b><button id="close-node-picker" class="icon-button" aria-label="Cerrar"><i data-lucide="x"></i></button></div><div class="node-picker-tabs"><button class="node-picker-tab active" data-node-group="3d">3D</button><button class="node-picker-tab" data-node-group="2d">2D / HUD</button></div><div id="node-picker-list" class="node-picker-list"></div></div>
-        <div class="divider"></div>
-        <div class="panel-heading"><span>JERARQUÍA</span><span id="object-count" class="count">0</span></div>
-        <div id="hierarchy" class="hierarchy"></div>
-        <div class="left-bottom"><div class="divider"></div><div class="eyebrow">ARCHIVOS</div>
-          <span class="import-note">Archivos del proyecto</span>
-        </div>
-      </aside>
-      <div class="panel-resizer" id="resize-left" role="separator" aria-label="Cambiar ancho del panel de escena"></div>
-      <section class="center-panel">
-        <nav class="toolbar">
-          <button class="tool active" data-mode="translate" title="Mover"><i data-lucide="move-3d"></i><span>Mover</span></button>
-          <button class="tool" data-mode="rotate" title="Rotar"><i data-lucide="rotate-3d"></i><span>Rotar</span></button>
-          <button class="tool" data-mode="scale" title="Escalar"><i data-lucide="scaling"></i><span>Escalar</span></button>
-          <span class="toolbar-divider"></span><button id="focus-button" class="tool icon-only" title="Enfocar selección"><i data-lucide="scan-eye"></i></button>
-          <div class="toolbar-spacer"></div><span class="hint" id="viewport-hint">Arrastra para orbitar · toca un objeto para elegirlo</span>
-        </nav>
-        <div id="viewport" class="viewport"><canvas id="scene-canvas"></canvas><div class="viewport-badge"><i data-lucide="box"></i><span id="viewport-label">VISTA 3D</span><em>• TOUCH</em></div><div id="empty-hint" class="empty-hint">Toca un objeto o crea uno nuevo</div>
-          <div id="play-controls" class="play-controls hidden"><div class="move-pad" id="move-pad"><span class="pad-center"></span><span class="pad-label north">▲</span><span class="pad-label south">▼</span><span class="pad-label west">◀</span><span class="pad-label east">▶</span></div><div class="look-hint">Arrastra aquí para mirar</div><button id="exit-play" class="exit-play"><i data-lucide="square"></i> Salir</button></div>
-        </div>
-        <div class="bottom-dock"><span class="dock-tab selected"><i data-lucide="layers-3"></i> Escena</span><span class="dock-spacer"></span><span id="status-text" class="status-dot">● LISTO</span></div>
-        <section id="lua-panel" class="lua-panel hidden"><div class="lua-head"><div><b>Script del nodo</b><span>Lua 5.3 · nodo seleccionado</span></div><div class="lua-actions"><button id="lua-example" class="button subdued small">Ejemplo</button><button id="lua-run" class="button run small"><i data-lucide="play"></i> Ejecutar</button><button id="lua-close" class="icon-button"><i data-lucide="x"></i></button></div></div><textarea id="lua-code" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" placeholder="Selecciona un nodo y escribe su script Lua aquí…"></textarea><pre id="lua-output" class="lua-output">Listo. Usa engine.add_cube(nombre), engine.add_sphere(nombre), engine.select(nombre), engine.set_selected_position(x, y, z) y print(...).</pre></section>
-      </section>
-      <div class="panel-resizer" id="resize-right" role="separator" aria-label="Cambiar ancho del inspector"></div>
-      <aside class="panel inspector-panel"><div class="panel-heading"><span>INSPECTOR</span><button id="delete-button" class="icon-button danger" title="Eliminar selección"><i data-lucide="trash-2"></i></button></div>
-        <label class="field-label" for="object-name">Objeto seleccionado</label><input id="object-name" class="text-field" value="Sin selección" />
-        <div class="divider"></div><div class="section-title">TRANSFORMACIÓN</div>
-        <div class="axis-row"><span class="axis x-axis">X</span><label>Posición</label><input id="px" type="number" step="0.1" value="0" /><input id="py" type="number" step="0.1" value="0" /><input id="pz" type="number" step="0.1" value="0" /></div>
-        <div class="axis-row"><span class="axis r-axis">↻</span><label>Rotación °</label><input id="rx" type="number" step="5" value="0" /><input id="ry" type="number" step="5" value="0" /><input id="rz" type="number" step="5" value="0" /></div>
-        <div class="axis-row"><span class="axis s-axis">↗</span><label>Escala</label><input id="sx" type="number" step="0.1" value="1" /><input id="sy" type="number" step="0.1" value="1" /><input id="sz" type="number" step="0.1" value="1" /></div>
-        <div class="divider"></div><div class="section-title">MATERIAL</div><div class="material-head"><select id="material-select" aria-label="Material del objeto"><option value="">Material propio</option></select><button id="new-material" class="icon-button" title="Crear material"><i data-lucide="plus"></i></button></div>
-        <label class="field-label" for="material-name">Nombre</label><input id="material-name" class="text-field" placeholder="Material" disabled />
-        <label class="field-label" for="material-color">Color base</label><div class="color-row"><input id="material-color" type="color" value="#44d7a0" disabled/><span id="color-value">#44D7A0</span></div>
-        <label class="field-label" for="material-roughness">Rugosidad</label><div class="range-row"><input id="material-roughness" type="range" min="0" max="1" step="0.01" value="0.5" disabled/><span id="roughness-value">0.50</span></div>
-        <label class="field-label" for="material-metalness">Metallicidad</label><div class="range-row"><input id="material-metalness" type="range" min="0" max="1" step="0.01" value="0.1" disabled/><span id="metalness-value">0.10</span></div>
-        <div id="hud-properties" class="hud-properties hidden"><div class="divider"></div><div class="section-title">HUD</div><label class="field-label" for="hud-text">Texto</label><input id="hud-text" class="text-field" value="" placeholder="Texto del botón" /><div class="hud-image-row"><button id="hud-image-button" class="button subdued small"><i data-lucide="image"></i><span>Imagen de fondo</span></button><input id="hud-image-input" type="file" accept="image/png,image/jpeg,image/webp" hidden><button id="hud-image-clear" class="icon-button" title="Quitar imagen"><i data-lucide="x"></i></button></div><small id="hud-image-name" class="hud-image-name">Sin imagen</small></div>
-        <div class="divider"></div><div class="section-title">SCRIPT DEL NODO</div><button id="edit-node-script" class="button subdued small script-open-button"><i data-lucide="code-xml"></i><span>Abrir script del nodo</span></button><div class="inspector-foot">Cada nodo conserva su código. Se edita en la pestaña superior Script.</div>
-      </aside>
-    </main>
+
+    <div id="resize-right" class="resize-bar" title="Redimensionar"></div>
+
+    <!-- Dock derecho: inspector -->
+    <aside class="inspector-panel dock">
+      <header class="dock-head"><span class="dock-title">Inspector</span></header>
+      <div class="inspector-body">
+        <label class="field-label" for="object-name">Nodo</label>
+        <input id="object-name" class="text-field" disabled />
+        <button class="wide-button" id="edit-node-script" disabled><i data-lucide="code-xml"></i><span>Editar script</span></button>
+
+        <section class="section">
+          <h4 class="section-title">Transformación</h4>
+          <div class="axis-row">
+            <span>Posición</span>
+            <div class="axis-field"><span class="axis-letter x-letter">X</span><input id="px" type="number" step="0.1" disabled /></div>
+            <div class="axis-field"><span class="axis-letter y-letter">Y</span><input id="py" type="number" step="0.1" disabled /></div>
+            <div class="axis-field"><span class="axis-letter z-letter">Z</span><input id="pz" type="number" step="0.1" disabled /></div>
+          </div>
+          <div class="axis-row">
+            <span>Rotación °</span>
+            <div class="axis-field"><span class="axis-letter x-letter">X</span><input id="rx" type="number" step="1" disabled /></div>
+            <div class="axis-field"><span class="axis-letter y-letter">Y</span><input id="ry" type="number" step="1" disabled /></div>
+            <div class="axis-field"><span class="axis-letter z-letter">Z</span><input id="rz" type="number" step="1" disabled /></div>
+          </div>
+          <div class="axis-row">
+            <span>Escala</span>
+            <div class="axis-field"><span class="axis-letter x-letter">X</span><input id="sx" type="number" step="0.1" disabled /></div>
+            <div class="axis-field"><span class="axis-letter y-letter">Y</span><input id="sy" type="number" step="0.1" disabled /></div>
+            <div class="axis-field"><span class="axis-letter z-letter">Z</span><input id="sz" type="number" step="0.1" disabled /></div>
+          </div>
+        </section>
+
+        <section class="section">
+          <h4 class="section-title">Material</h4>
+          <div class="field-row">
+            <select id="material-select" class="select-field" disabled></select>
+            <button class="icon-btn" id="new-material" title="Nuevo material" disabled><i data-lucide="plus"></i></button>
+          </div>
+          <label class="field-label" for="material-name">Nombre</label>
+          <input id="material-name" class="text-field" disabled />
+          <div class="color-row">
+            <input id="material-color" type="color" disabled />
+            <span id="color-value">#44D7A0</span>
+          </div>
+          <label class="slider-row"><span>Rugosidad</span><input id="material-roughness" type="range" min="0" max="1" step="0.01" disabled /><output id="roughness-value">0.50</output></label>
+          <label class="slider-row"><span>Metálico</span><input id="material-metalness" type="range" min="0" max="1" step="0.01" disabled /><output id="metalness-value">0.10</output></label>
+        </section>
+
+        <section class="section hidden" id="hud-properties">
+          <h4 class="section-title">HUD</h4>
+          <label class="field-label" for="hud-text">Texto</label>
+          <input id="hud-text" class="text-field" />
+          <label class="field-label">Imagen</label>
+          <div class="hud-image-row">
+            <button class="wide-button" id="hud-image-button"><i data-lucide="image"></i><span id="hud-image-name">Sin imagen</span></button>
+            <button class="icon-btn" id="hud-image-clear" title="Quitar imagen"><i data-lucide="x"></i></button>
+          </div>
+          <input id="hud-image-input" type="file" accept="image/png,image/jpeg,image/webp" class="sr-only" />
+        </section>
+      </div>
+    </aside>
+
+    <!-- Barra de estado inferior -->
+    <footer class="statusbar">
+      <span id="status-text" class="status-dot">● LISTO</span>
+      <span class="spacer"></span>
+      <span id="save-state">● Guardado local</span>
+    </footer>
   </div>
-  <script type="module" src="/src/main.js"></script>
+
+  <input id="asset-input" type="file" class="sr-only" multiple accept=".glb,.gltf,.fbx,.obj,.png,.jpg,.jpeg,.webp" />
+</div>
+
+<script type="module" src="/src/main.js"></script>
 </body>
 </html>

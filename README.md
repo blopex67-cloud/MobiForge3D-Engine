@@ -1,20 +1,36 @@
-# MobiForge 3D — 1.3.0
+# MobiForge 3D — 1.4.0
 
 Editor móvil horizontal con interfaz HTML/Three.js empaquetado con Cordova.
 
 - Proyectos con escenas separadas y guardado local; cada escena conserva sus nodos y scripts.
-- El botón `+` junto al selector de escenas abre un selector de nodos categorizado como en un editor 3D: nodos 3D y nodos 2D/HUD.
-- El HUD 2D vive en coordenadas de pantalla y se superpone a la vista 3D; tiene botones, texto y sprites. En Probar los gizmos se ocultan.
-- `CharacterBody3D` es un nodo corporal básico para construir un personaje, no un personaje completo prefabricado ni un motor físico.
-- El Inspector deja crear materiales reutilizables por proyecto y editar nombre, color base, rugosidad y metallicidad.
-- Un solo editor Lua está en la pestaña superior Script y edita el código del nodo seleccionado; cada nodo guarda su propio texto Lua con la escena.
-- Los separadores entre paneles permiten arrastrar sus anchos y guardarlos localmente.
-- El botón superior visible «Importar» abre el selector de archivos Android. Acepta GLB/GLTF, FBX, OBJ e imágenes PNG/JPG/WebP. Los archivos se guardan en IndexedDB local; las imágenes entran en la capa HUD. GLTF/FBX con recursos externos separados pueden requerir empaquetar antes sus texturas; OBJ se importa como geometría, sin resolver materiales MTL externos.
-- «Insertar escena» copia los objetos de otra escena dentro de la escena activa y los deja editables en el destino; es una copia independiente, no una instancia enlazada al original.
-- «Exportar APK» empaqueta el proyecto activo, recursos locales, runtime Android propio y workflow dentro de `.github/workflows`. Al cargar los archivos descomprimidos a un repo nuevo, el push dispara GitHub Actions, que compila el APK debug del juego y publica el artefacto `Juego-Android-APK`. No se compila dentro del editor/teléfono: Actions es el compilador remoto del proyecto, como flujo de exportación de motor.
-- En modo Play se conserva el suelo jugable y se ocultan solo cuadrícula/ejes. Cámara y spawn siguen el nodo Player; el fondo ya no es negro.
-- Primera exportación: escenas Main/Player, primitivas, modelos GLB/GLTF/FBX/OBJ autocontenidos, imágenes y HUD. Aún no ejecuta scripts Lua, no tiene física/colliders configurables ni cambio de escenas en tiempo de juego. GLTF/FBX/OBJ que dependan de ficheros externos deben empaquetarse como GLB autocontenido.
+- El árbol de escena permite crear nodos 3D y 2D/HUD, importar modelos e insertar una escena como copia editable independiente.
+- El HUD 2D se superpone a la vista 3D; tiene botones, texto e imágenes. En Play se ocultan gizmos/cuadrícula/ejes y se conserva el suelo; la cámara parte del nodo Player cuando existe.
+- `CharacterBody3D` es un nodo corporal básico, no un personaje prefabricado ni un motor físico completo.
+- El Inspector permite materiales de proyecto, color, rugosidad y metalicidad; los paneles se pueden redimensionar.
+- Importa GLB/GLTF, FBX, OBJ e imágenes PNG/JPG/WebP. Mantén modelos autocontenidos como GLB para que sus texturas viajen con ellos; MTL/archivos externos no se resuelven completamente.
+- «Exportar APK» empaqueta el proyecto, recursos, runtime y workflow en `.github/workflows`. Sube el contenido descomprimido a un repo GitHub; Actions compila y publica `Juego-Android-APK`, la APK debug del juego. No es el APK del editor.
 
-El editor usa implementación propia, inspirada en convenciones de organización de editores 3D; no copia el código fuente de Godot. Lua se ejecuta con Fengari/Lua 5.3 y la API del editor es acotada. Los controles de personaje son iniciales; no equivalen a una implementación completa de físicas y colisiones. Compilar no sustituye a probar visual y táctilmente en un teléfono real.
+## Lua: qué hace actualmente
 
-El workflow **Build MobiForge 3D HTML Android APK** genera un APK debug y lo publica como artefacto de Actions.
+El editor ejecuta Lua 5.3 mediante Fengari, pero **no interpreta instrucciones en español**: debes escribir sintaxis Lua y llamar a la API `engine` que el editor expone. El botón «Ejecutar» corre el script una vez en el editor. En Play, cada script guardado se ejecuta una vez al entrar; no existe todavía una función `update`/`_process`, callbacks, eventos o temporizador para repetir acciones cada fotograma. Al detener Play se restauran los cambios temporales de prueba. La APK exportada aún no ejecuta Lua.
+
+API expuesta actualmente:
+
+- `engine.node_name()` — nombre del nodo al que pertenece el script.
+- `engine.add_cube(nombre)`, `engine.add_sphere(nombre)`, `engine.add_cylinder(nombre)`, `engine.add_sprite(nombre)` — crear un objeto.
+- `engine.select(nombre)` — seleccionar otro nodo existente.
+- `engine.set_node_position(x, y, z)` — fijar posición del nodo con script.
+- `engine.move_node(dx, dy, dz)` — mover ese nodo una vez, respecto a su posición actual.
+- `engine.set_selected_position(x, y, z)` y `engine.set_selected_color('#rrggbb')` — actuar sobre la selección del editor.
+- `engine.log(...)` o `print(...)` — escribir en la salida del panel Lua.
+
+Ejemplo para mover el nodo seleccionado medio metro en X cada vez que pulses «Ejecutar»:
+
+```lua
+engine.move_node(0.5, 0, 0)
+print("Nodo movido:", engine.node_name())
+```
+
+No están implementadas las API de Godot como `self.position`, `get_node()`, `_process(delta)`, señales, físicas o colisiones; usar esas llamadas no mueve el objeto y puede dar un error Lua. Los controles disponibles son solo los enumerados arriba.
+
+La compilación de CI comprueba el empaquetado; no sustituye una prueba visual/táctil en un teléfono ni una exportación real de un juego.
