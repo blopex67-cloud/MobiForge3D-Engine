@@ -1,32 +1,33 @@
 # MobiForge 3D
 
-**Un editor 3D móvil en horizontal para empezar a crear videojuegos desde el teléfono.**
+**Editor 3D para teléfonos, con interfaz HTML y orientación horizontal.**
 
-MobiForge 3D es el primer prototipo de un proyecto propio de editor/engine móvil. Esta versión se apoya en **Godot 4.4.1** como motor de renderizado y exportación: todavía no es un motor gráfico independiente escrito desde cero ni un reemplazo de Unity/Unreal.
+El proyecto conserva la alpha original de Godot como referencia (`Main.tscn` y archivos GDScript) y ahora incorpora una interfaz móvil HTML/CSS/JavaScript en `webapp/`, empaquetada en Android mediante Cordova. Esta es una base de editor, no un motor completo equivalente a Unity, Godot o Unreal.
 
-## Lo que incluye esta primera versión
+## Funciones de la interfaz HTML
 
-- Interfaz de editor en español diseñada para pantalla horizontal.
-- Visor 3D en tiempo real con cámara orbital táctil, iluminación y cuadrícula.
-- Jerarquía de escena y selección de objetos.
-- Añadir cubos, esferas y luces de prueba.
-- Inspector con posición, rotación y escala editables.
-- Vista de prueba con animación simple.
-- Guardado local de la escena en JSON (`user://mi_primer_juego.json`).
-- Exportación automatizada de APK Android por GitHub Actions.
+- Vista 3D en tiempo real con cámara orbital táctil, iluminación y cuadrícula.
+- Jerarquía y selección de objetos tocándolos en el visor.
+- Crear cubos, esferas, cilindros y luces.
+- Gizmos de mover, rotar y escalar; inspector numérico y edición de color.
+- Guardado local de la escena en el dispositivo.
+- Panel para ejecutar scripts Lua dentro del editor.
+- Empaquetado Android en orientación horizontal.
 
-## Primer APK / instalar
+## Lua
 
-Cada cambio en `main` ejecuta `Build Android APK`. El archivo se publica como artefacto de la ejecución de GitHub Actions. También se puede iniciar manualmente desde la pestaña **Actions**.
+La app integra Fengari, una máquina virtual con semántica de Lua 5.3 ejecutada en JavaScript. Incluye las bibliotecas de Lua que Fengari soporta en navegador y una API del editor: `engine.add_cube(nombre)`, `engine.add_sphere(nombre)`, `engine.add_cylinder(nombre)`, `engine.select(nombre)`, `engine.set_selected_position(x, y, z)`, `engine.set_selected_color(hex)` y `print(...)`.
 
-La APK de esta etapa es una **alpha de editor**. No incluye todavía importación de GLB, scripts visuales, animación avanzada, física, sistema de assets ni exportación de juegos creados dentro del editor. Esos son hitos posteriores, no funciones ya terminadas.
+Esto permite correr código Lua normal compatible con ese runtime, pero no significa que acepte automáticamente cualquier extensión externa: módulos nativos/C, módulos de terceros no incluidos y operaciones de sistema de archivos del entorno de escritorio no forman parte del sandbox web.
 
-## Desarrollo
+## Compilar Android
 
-- Motor base: Godot 4.4.1.
-- Lenguaje: GDScript.
-- Renderizador: Compatibility (pensado para compatibilidad móvil).
-- Orientación: horizontal.
-- Paquete Android: `com.blopex.mobiforge3d`.
+Cada actualización de `main` ejecuta el workflow **Build MobiForge 3D HTML Android APK**. El APK debug se publica como artefacto de GitHub Actions. También se puede lanzar manualmente desde **Actions**.
 
-Abre este directorio con Godot 4.4.1 o posterior y ejecuta `Main.tscn`.
+## Estructura
+
+- `webapp/`: interfaz HTML, estilos, Three.js y runtime Lua.
+- `Main.tscn`, `scripts/editor.gd`, `project.godot`: alpha Godot original conservada.
+- `.github/workflows/android-apk.yml`: empaqueta la interfaz web para Android/Cordova.
+
+La app sigue en alpha: no incluye importación GLB, físicas completas, animación, gestión de assets ni exportación de juegos creados dentro del editor. La compilación del APK tampoco equivale a una prueba en un teléfono real.

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#10151d" />
+  <title>MobiForge 3D</title>
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark">◆</span><span>MOBIFORGE <small>3D</small></span></div>
+      <div class="project-title"><b>MI PRIMER JUEGO</b><span id="save-state">● Guardado local</span></div>
+      <div class="top-actions"><button id="save-button" class="button subdued">Guardar</button><button id="play-button" class="button play">▶ Probar</button></div>
+    </header>
+    <main class="layout">
+      <aside class="panel left-panel">
+        <div class="panel-heading"><span>ESCENA</span><button id="add-menu" class="icon-button" aria-label="Añadir objeto">＋</button></div>
+        <div class="scene-name">▾ &nbsp; Nivel principal</div>
+        <div class="divider"></div>
+        <div class="panel-heading"><span>JERARQUÍA</span><span id="object-count" class="count">0</span></div>
+        <div id="hierarchy" class="hierarchy"></div>
+        <div class="left-bottom">
+          <div class="divider"></div><div class="eyebrow">CREAR</div>
+          <button class="wide-button" data-add="Cube">＋ Cubo</button>
+          <button class="wide-button" data-add="Sphere">＋ Esfera</button>
+          <button class="wide-button" data-add="Cylinder">＋ Cilindro</button>
+          <button class="wide-button" data-add="Light">＋ Luz</button>
+        </div>
+      </aside>
+      <section class="center-panel">
+        <nav class="toolbar">
+          <button class="tool active" data-mode="translate" title="Mover">↔ <span>Mover</span></button>
+          <button class="tool" data-mode="rotate" title="Rotar">⟳ <span>Rotar</span></button>
+          <button class="tool" data-mode="scale" title="Escalar">⤢ <span>Escalar</span></button>
+          <span class="toolbar-divider"></span>
+          <button id="focus-button" class="tool icon-only" title="Enfocar selección">◎</button>
+          <div class="toolbar-spacer"></div><span class="hint">Arrastra la vista para orbitar</span>
+        </nav>
+        <div id="viewport" class="viewport"><canvas id="scene-canvas"></canvas><div class="viewport-badge">VISTA 3D <span>•</span> TOUCH</div><div id="empty-hint" class="empty-hint">Toca un objeto o crea uno nuevo</div></div>
+        <div class="bottom-dock"><button class="dock-tab selected" data-tab="scene">Escena</button><button class="dock-tab" data-tab="lua">Script Lua</button><span class="dock-spacer"></span><span id="status-text" class="status-dot">● LISTO</span></div>
+        <section id="lua-panel" class="lua-panel hidden">
+          <div class="lua-head"><div><b>Script Lua</b><span>Lua 5.3 · ejecutar en el editor</span></div><div class="lua-actions"><button id="lua-example" class="button subdued small">Ejemplo</button><button id="lua-run" class="button run small">▶ Ejecutar</button><button id="lua-close" class="icon-button">×</button></div></div>
+          <textarea id="lua-code" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off">-- Script Lua para la escena\nlocal objeto = engine.add_cube("Cubo Lua")\nengine.set_selected_position(0, 1, 0)\nprint("Objeto creado:", objeto)\n</textarea>
+          <pre id="lua-output" class="lua-output">Listo. Puedes usar engine.add_cube(nombre), engine.add_sphere(nombre), engine.select(nombre) y engine.set_selected_position(x, y, z).</pre>
+        </section>
+      </section>
+      <aside class="panel inspector-panel">
+        <div class="panel-heading"><span>INSPECTOR</span><button id="delete-button" class="icon-button danger" title="Eliminar selección">⌫</button></div>
+        <label class="field-label" for="object-name">Objeto seleccionado</label><input id="object-name" class="text-field" value="Sin selección" />
+        <div class="divider"></div>
+        <div class="section-title">TRANSFORMACIÓN</div>
+        <div class="axis-row"><span class="axis x-axis">X</span><label>Posición</label><input id="px" type="number" step="0.1" value="0" /><input id="py" type="number" step="0.1" value="0" /><input id="pz" type="number" step="0.1" value="0" /></div>
+        <div class="axis-row"><span class="axis r-axis">↻</span><label>Rotación °</label><input id="rx" type="number" step="5" value="0" /><input id="ry" type="number" step="5" value="0" /><input id="rz" type="number" step="5" value="0" /></div>
+        <div class="axis-row"><span class="axis s-axis">↗</span><label>Escala</label><input id="sx" type="number" step="0.1" value="1" /><input id="sy" type="number" step="0.1" value="1" /><input id="sz" type="number" step="0.1" value="1" /></div>
+        <div class="divider"></div><div class="section-title">MATERIAL</div>
+        <label class="field-label" for="material-color">Color</label><div class="color-row"><input id="material-color" type="color" value="#44d7a0"/><span id="color-value">#44D7A0</span></div>
+        <div class="inspector-foot">Los cambios se guardan en este dispositivo.</div>
+      </aside>
+    </main>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

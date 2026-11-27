@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build MobiForge 3D HTML Android APK
 
 on:
   push:
@@ -10,11 +10,18 @@ permissions:
 
 jobs:
   build-apk:
-    name: Export MobiForge 3D for Android
+    name: Package HTML editor for Android
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: webapp/package.json
 
       - name: Install Java
         uses: actions/setup-java@v4
@@ -27,58 +34,49 @@ jobs:
         with:
           packages: ''
 
-      - name: Install Android build tools
-        run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.1" "cmdline-tools;latest" "ndk;27.2.12479018" "cmake;3.22.1"
+      - name: Install Android platform tools
+        run: sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
-      - name: Download Godot 4.4.1 and Android export templates
-        shell: bash
+      - name: Bundle HTML, Three.js and Lua runtime
+        working-directory: webapp
         run: |
-          set -euo pipefail
-          GODOT_VERSION=4.4.1
-          curl -fL "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip" -o /tmp/godot.zip
-          unzip -q /tmp/godot.zip -d /tmp/godot
-          sudo install -m 0755 "/tmp/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64" /usr/local/bin/godot
-          curl -fL "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz" -o /tmp/templates.tpz
-          mkdir -p /tmp/godot-templates "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
-          unzip -q /tmp/templates.tpz -d /tmp/godot-templates
-          find /tmp/godot-templates -type f \( -name 'android_debug.apk' -o -name 'android_release.apk' -o -name 'android_source.zip' \) -exec cp {} "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable/" \;
-          test -f "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable/android_debug.apk"
-          mkdir -p "$HOME/.android" "$HOME/.config/godot"
-          keytool -genkeypair -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-          printf '[gd_resource type="EditorSettings" format=3]\n\n[resource]\nexport/android/android_sdk_path = "%s"\nexport/android/java_sdk_path = "%s"\n' "$ANDROID_HOME" "$JAVA_HOME" > "$HOME/.config/godot/editor_settings-4.4.tres"
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path("export_presets.cfg")
-          s = p.read_text()
-          s = s.replace('keystore/debug=""', f'keystore/debug="{Path.home()}/.android/debug.keystore"')
-          p.write_text(s)
-          PY
+          npm install
+          npm run build
 
-      - name: Validate project scripts
-        run: godot --headless --editor --path . --quit
-
-      - name: Export debug APK
+      - name: Create Cordova Android shell
         run: |
-          mkdir -p build
-          export GODOT_ANDROID_KEYSTORE_DEBUG_PATH="$HOME/.android/debug.keystore"
-          export GODOT_ANDROID_KEYSTORE_DEBUG_USER=androiddebugkey
-          export GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android
-          godot --headless --verbose --path . --export-debug Android build/MobiForge3D.apk 2>&1 | tee build/export.log
-          test -s build/MobiForge3D.apk
+          npm install --global cordova@12
+          cordova create cordova com.blopex.mobiforge3d "MobiForge 3D"
+          cat > cordova/config.xml <<'XML'
+          <?xml version='1.0' encoding='utf-8'?>
+          <widget id="com.blopex.mobiforge3d" version="0.2.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
+            <name>MobiForge 3D</name>
+            <description>Editor 3D móvil con interfaz HTML, gizmos táctiles y scripts Lua.</description>
+            <content src="index.html" />
+            <access origin="*" />
+            <allow-intent href="https://*/*" />
+            <preference name="Orientation" value="landscape" />
+            <preference name="Fullscreen" value="true" />
+            <preference name="AndroidXEnabled" value="true" />
+            <preference name="DisallowOverscroll" value="true" />
+          </widget>
+          XML
+          rm -rf cordova/www/*
+          cp -R webapp/dist/. cordova/www/
+          cd cordova
+          cordova platform add android@13.0.0
+          cordova build android --debug
 
-      - name: Upload export diagnostics on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: MobiForge3D-export-log
-          path: build/export.log
-          if-no-files-found: ignore
-          retention-days: 7
+      - name: Verify Android package
+        run: |
+          APK="cordova/platforms/android/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          file "$APK"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: MobiForge3D-Android-APK
-          path: build/MobiForge3D.apk
+          name: MobiForge3D-HTML-Android-APK
+          path: cordova/platforms/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
