@@ -16,7 +16,7 @@
         <button class="workspace-tab" data-area="script"><i data-lucide="code-xml"></i><span>Script</span></button>
       </nav>
       <span id="project-name-top" hidden></span><span id="save-state" hidden></span>
-      <div class="top-actions"><button id="import-model-top" type="button" class="button subdued import-top-button" title="Importar modelo 3D o imagen" aria-label="Importar modelo 3D o imagen"><i data-lucide="upload"></i><span>Importar</span></button><input id="asset-input" type="file" accept="*/*" multiple hidden><button id="save-button" class="icon-button" title="Guardar" aria-label="Guardar"><i data-lucide="save"></i></button><button id="play-button" class="button play"><i data-lucide="play"></i><span>Probar</span></button></div>
+      <div class="top-actions"><button id="import-model-top" type="button" class="button subdued import-top-button" title="Importar modelo 3D o imagen" aria-label="Importar modelo 3D o imagen"><i data-lucide="upload"></i><span>Importar</span></button><input id="asset-input" type="file" accept="*/*" multiple hidden><button id="save-button" class="icon-button" title="Guardar" aria-label="Guardar"><i data-lucide="save"></i></button><button id="export-game-button" class="button subdued export-game-button" title="Preparar paquete para compilar el APK del juego"><i data-lucide="box"></i><span>Preparar APK</span></button><button id="play-button" class="button play"><i data-lucide="play"></i><span>Probar</span></button></div>
     </header>
     <section id="project-home" class="project-home">
       <div class="home-wrap">
@@ -34,7 +34,7 @@
       <aside class="panel left-panel">
         <div class="panel-heading"><span>ESCENA</span><button id="new-scene-top" class="icon-button" title="Nueva escena"><i data-lucide="plus"></i></button></div>
         <button id="back-projects" class="scene-name"><i data-lucide="chevron-left"></i><span>Todos los proyectos</span></button>
-        <div class="scene-tools"><select id="scene-select" aria-label="Escena actual"></select><button id="node-menu-button" class="icon-button add-node-button" title="Añadir nodo"><i data-lucide="plus"></i></button></div>
+        <div class="scene-tools"><select id="scene-select" aria-label="Escena actual"></select><button id="insert-scene-button" class="icon-button" title="Insertar una escena existente como copia" aria-label="Insertar escena"><i data-lucide="layers-3"></i></button><button id="node-menu-button" class="icon-button add-node-button" title="Añadir nodo"><i data-lucide="plus"></i></button></div>
         <div id="node-picker" class="node-picker hidden"><div class="node-picker-head"><b>Añadir nodo</b><button id="close-node-picker" class="icon-button" aria-label="Cerrar"><i data-lucide="x"></i></button></div><div class="node-picker-tabs"><button class="node-picker-tab active" data-node-group="3d">3D</button><button class="node-picker-tab" data-node-group="2d">2D / HUD</button></div><div id="node-picker-list" class="node-picker-list"></div></div>
         <div class="divider"></div>
         <div class="panel-heading"><span>JERARQUÍA</span><span id="object-count" class="count">0</span></div>

@@ -1,12 +1,13 @@
 {
   "name": "mobiforge3d-html",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": { "build": "vite build", "dev": "vite --host 0.0.0.0" },
   "dependencies": {
     "fengari": "^0.1.5",
     "fengari-interop": "^0.1.4",
+    "jszip": "^3.10.1",
     "lucide": "^1.81.0",
     "three": "^0.187.0"
   },
