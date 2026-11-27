@@ -45,8 +45,8 @@ jobs:
           mkdir -p export-template/public
           printf '{"format":"mobiforge-game-v1","name":"Prueba","scenes":[{"id":"main","objects":[]},{"id":"player","objects":[]}]}' > export-template/public/game.json
           npx vite build export-template --outDir dist-export-validation --emptyOutDir --base ./
-          test -s dist-export-validation/index.html
-          rm -rf export-template/public dist-export-validation
+          test -s export-template/dist-export-validation/index.html
+          rm -rf export-template/public export-template/dist-export-validation
 
       - name: Create Cordova Android shell
         run: |
