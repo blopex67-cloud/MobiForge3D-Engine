@@ -1,16 +1,16 @@
 # MobiForge 3D
 
-Editor móvil horizontal con interfaz HTML/Three.js y paquete Android Cordova.
+Editor móvil horizontal con interfaz HTML/Three.js empaquetado con Cordova.
 
-- Proyectos con escenas separadas y guardado local; cada escena conserva nodos y scripts.
-- Panel de nodos junto al selector de escenas, con categorías 3D y 2D/HUD.
-- La vista HUD 2D usa una cámara ortográfica y se compone encima de la escena al probar; sus botones y textos ocupan coordenadas de pantalla.
-- CharacterBody3D es solo un nodo corporal básico, no un personaje armado ni un controlador físico completo.
-- Inspector con biblioteca de materiales editables: nombre, color, rugosidad y metallicidad.
-- Un único acceso principal a Script en la barra superior; Lua por nodo permanece en el Inspector.
-- Los separadores entre paneles permiten cambiar el ancho y recordar los tamaños en este dispositivo.
-- Importación de GLB autocontenido (modelo escalado para caber en la escena) e imágenes; los archivos se guardan en IndexedDB local.
+- Proyectos con escenas separadas y guardado local; cada escena conserva sus nodos y scripts.
+- El botón `+` junto al selector de escenas abre un selector de nodos categorizado como en un editor 3D: nodos 3D y nodos 2D/HUD.
+- El HUD 2D vive en coordenadas de pantalla y se superpone a la vista 3D; tiene botones, texto y sprites. En Probar los gizmos se ocultan.
+- `CharacterBody3D` es un nodo corporal básico para construir un personaje, no un personaje completo prefabricado ni un motor físico.
+- El Inspector deja crear materiales reutilizables por proyecto y editar nombre, color base, rugosidad y metallicidad.
+- Un solo editor Lua está en la pestaña superior Script y edita el código del nodo seleccionado; cada nodo guarda su propio texto Lua con la escena.
+- Los separadores entre paneles permiten arrastrar sus anchos y guardarlos localmente.
+- Importa GLB autocontenido e imágenes PNG/JPG/WebP. Los originales quedan en IndexedDB local; las imágenes entran en la capa HUD. GLB externos con dependencias de textura separadas no están soportados.
 
-Es una implementación propia del editor web, inspirada en la organización común de editores 3D; no reutiliza código fuente de Godot. Lua usa Fengari 5.3 y una API acotada del editor. Las plantillas de movimiento aún no tienen física ni colisiones completas. La importación de GLB con archivos externos/enlaces de textura no se admite: usa un GLB que lleve incluidos sus recursos. El build Android no sustituye a la validación visual y táctil en teléfono real.
+El editor usa implementación propia, inspirada en convenciones de organización de editores 3D; no copia el código fuente de Godot. Lua se ejecuta con Fengari/Lua 5.3 y la API del editor es acotada. Los controles de personaje son iniciales; no equivalen a una implementación completa de físicas y colisiones. Compilar no sustituye a probar visual y táctilmente en un teléfono real.
 
-El workflow **Build MobiForge 3D HTML Android APK** compila el APK debug y lo sube como artefacto de Actions.
+El workflow **Build MobiForge 3D HTML Android APK** genera un APK debug y lo publica como artefacto de Actions.
