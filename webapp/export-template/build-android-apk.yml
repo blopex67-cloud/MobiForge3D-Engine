@@ -1,46 +1,66 @@
-name: Exportar juego a APK Android
+name: Crear APK del juego con MobiForge
 on:
+  push:
+    branches: [main, master]
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  build:
+  build-android:
+    name: Compilar proyecto como APK Android
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Descargar proyecto
+        uses: actions/checkout@v4
+      - name: Instalar Node
+        uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - uses: actions/setup-java@v4
+      - name: Instalar Java
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v4
+      - name: Instalar Android SDK
+        uses: android-actions/setup-android@v4
         with:
           packages: ''
-      - name: Instalar Android SDK
+      - name: Instalar herramientas Android
         run: sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
-      - name: Preparar proyecto del juego
+      - name: Construir el juego APK
         run: |
-          test -s mobiforge-project.zip
-          mkdir game-src
-          unzip -q mobiforge-project.zip -d game-src
-          cd game-src
+          test -s game.json
           npm install
           npm run build
-          NAME=$(node -e "const p=require('./public/game.json');console.log((p.name||'Juego').replace(/[^A-Za-z0-9 ]/g,'').trim().slice(0,28)||'Juego')")
-          SLUG=$(node -e "const p=require('./public/game.json');console.log((p.name||'juego').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/[^a-z0-9]+/g,'.').replace(/^\\.|\\.$/g,'').slice(0,24)||'juego')")
           npm install --global cordova@12
-          cordova create "$GITHUB_WORKSPACE/cordova" "com.mobiforge.game.${SLUG}" "$NAME"
-          cp -R dist/. "$GITHUB_WORKSPACE/cordova/www/"
-          cd "$GITHUB_WORKSPACE/cordova"
+          NAME=$(node -e "const p=require('./game.json');console.log((p.name||'Juego').replace(/[^A-Za-z0-9 ]/g,'').trim().slice(0,28)||'Juego')")
+          SLUG=$(node -e "const p=require('./game.json');console.log((p.name||'juego').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/[^a-z0-9]+/g,'.').replace(/^\\.|\\.$/g,'').slice(0,24)||'juego')")
+          cordova create cordova "com.mobiforge.game.${SLUG}" "$NAME"
+          cat > cordova/config.xml <<XML
+          <?xml version='1.0' encoding='utf-8'?>
+          <widget id="com.mobiforge.game.${SLUG}" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
+            <name>${NAME}</name>
+            <description>Juego Android exportado desde MobiForge 3D</description>
+            <content src="index.html" />
+            <access origin="*" />
+            <allow-intent href="https://*/*" />
+            <preference name="Orientation" value="landscape" />
+            <preference name="Fullscreen" value="true" />
+            <preference name="AndroidXEnabled" value="true" />
+            <preference name="DisallowOverscroll" value="true" />
+          </widget>
+          XML
+          rm -rf cordova/www/*
+          cp -R dist/. cordova/www/
+          cd cordova
           cordova platform add android@13.0.0
           cordova build android --debug
-          mkdir -p "$GITHUB_WORKSPACE/dist-apk"
-          cp platforms/android/app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/dist-apk/${SLUG}-debug.apk"
+          mkdir -p ../dist-apk
+          cp platforms/android/app/build/outputs/apk/debug/app-debug.apk "../dist-apk/${SLUG}-debug.apk"
       - name: Verificar APK
         run: test -s dist-apk/*.apk
-      - uses: actions/upload-artifact@v4
+      - name: Publicar APK como artefacto descargable
+        uses: actions/upload-artifact@v4
         with:
           name: Juego-Android-APK
           path: dist-apk/*.apk

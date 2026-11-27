@@ -1,24 +1,31 @@
-# Compilar el juego como APK Android
+# Exportar el proyecto como APK Android
 
-El editor prepara un ZIP con tu juego y el código de compilación. GitHub Actions genera un APK de prueba/debug; no es la APK del editor. Para que Android lo compile se necesita GitHub Actions, así que esta primera versión requiere una preparación inicial desde GitHub en el teléfono.
+MobiForge genera un **paquete de proyecto listo para compilar**. GitHub Actions convierte ese proyecto en una APK Android debug; no es la APK del editor ni una APK vacía/base que luego requiera importar el juego.
 
-## Preparación inicial del repositorio (una vez)
+## Primera exportación (desde el teléfono)
 
-1. Crea un repositorio nuevo en GitHub para este juego. El ZIP contiene código y modelos del proyecto: elige **privado** si no quieres publicarlos.
-2. Descomprime el ZIP en el teléfono. En GitHub abre el repositorio y elige **Add file → Create new file**. En el nombre del archivo escribe `.github/workflows/build-android-apk.yml`.
-3. Abre el archivo `build-android-apk.yml` que venía en el ZIP, copia todo su contenido y pégalo en el archivo nuevo de GitHub. Guarda con **Commit changes**.
-4. Vuelve a la raíz del repositorio y elige **Add file → Upload files**. Sube el ZIP exportado renombrado exactamente `mobiforge-project.zip` y guarda con **Commit changes**.
-5. Abre **Actions** y habilita los workflows si GitHub lo solicita. Ejecuta **Exportar juego a APK Android → Run workflow**.
-6. Cuando termine en verde, abre la ejecución y descarga el artefacto **Juego-Android-APK**. Extrae el APK e instálalo; Android puede pedir permiso para instalar desde esa fuente.
+1. En MobiForge abre tu proyecto y toca **Exportar APK**. Guarda el ZIP.
+2. En GitHub crea un repositorio nuevo para el juego (puede ser privado).
+3. Descomprime el ZIP en el teléfono y sube **todos los archivos y carpetas a la raíz del repositorio**, incluida la carpeta oculta `.github/workflows` y `game.json`. No subas el ZIP como un único archivo.
+4. Al confirmar el commit, el workflow incluido se ejecuta automáticamente. Si GitHub pregunta, habilita Actions.
+5. Abre **Actions**, entra al run «Crear APK del juego con MobiForge», y descarga el artefacto **Juego-Android-APK** cuando el run termine en verde. Extrae e instala el APK; Android puede pedir autorización para instalarlo.
 
-## Exportaciones siguientes
+## Para volver a exportar después de cambiar el proyecto
 
-Sustituye `mobiforge-project.zip` por el ZIP más reciente en el mismo repositorio (Add file → Upload files, confirmar el reemplazo y hacer commit) y vuelve a ejecutar el workflow. Conserva el archivo `.github/workflows/build-android-apk.yml`.
+Toca **Exportar APK** otra vez, descomprime el nuevo ZIP y reemplaza los archivos del repositorio. El push vuelve a iniciar la compilación automática. También puedes volver a ejecutar el workflow desde Actions.
 
-## Incluido y límites de esta primera versión
+## Qué trae el juego inicial
 
-- Escenas Main y Player, primitivas, transformaciones, materiales básicos, modelos guardados localmente, imágenes y HUD.
-- «Insertar escena» incorpora una copia editable de sus objetos a la escena activa; la copia queda independiente de la escena original.
-- Runtime Android offline con cámara/movimiento táctil y modelos GLB/GLTF, FBX y OBJ. Para conservar texturas, usa GLB autocontenido.
-- La exportación todavía no ejecuta scripts Lua ni implementa física/colliders configurables, botones HUD interactivos, ni cambios de escena en tiempo de juego. GLTF/FBX/OBJ que dependan de archivos externos pueden perder recursos.
-- APK de debug para probar, no una compilación firmada para publicar en Google Play. La instalación/experiencia final requiere probarse en Android.
+- Main y Player, primitivas, posición/rotación/escala y materiales básicos.
+- Modelos GLB/GLTF, FBX u OBJ importados, y recursos locales empaquetados. Usa GLB autocontenido para conservar texturas.
+- HUD básico (texto, botones visuales e imágenes) y joystick/cámara táctiles en horizontal.
+- «Insertar escena» del editor significa **copiar objetos de una escena ya hecha dentro de la escena actual**, como objetos editables independientes, no solo cambiar a otra escena.
+
+## Todavía no soportado
+
+- Ejecutar scripts Lua en el juego exportado.
+- Física/colliders configurables, botones HUD con acciones, o cambio de escena durante la partida.
+- Texturas externas sueltas referidas por FBX/OBJ/GLTF; algunos modelos pueden perderlas al exportar.
+- Firma de producción para Google Play. El artefacto generado es debug para instalar y probar.
+
+El runtime de la APK es propio de MobiForge y está en el ZIP. No es el binario de Godot ni de Unity. El flujo requiere una cuenta GitHub con Actions habilitado; la primera carga del proyecto inicia la compilación Android en GitHub.

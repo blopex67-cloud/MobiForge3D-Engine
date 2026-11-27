@@ -42,11 +42,11 @@ jobs:
         run: |
           npm install
           npm run build
-          mkdir -p export-template/public
-          printf '{"format":"mobiforge-game-v1","name":"Prueba","scenes":[{"id":"main","objects":[]},{"id":"player","objects":[]}]}' > export-template/public/game.json
+          printf '{"format":"mobiforge-game-v1","name":"Prueba","scenes":[{"id":"main","objects":[]},{"id":"player","objects":[]}],"assets":{},"materials":[]}' > export-template/game.json
           npx vite build export-template --outDir dist-export-validation --emptyOutDir --base ./
           test -s export-template/dist-export-validation/index.html
-          rm -rf export-template/public export-template/dist-export-validation
+          rm -f export-template/game.json
+          rm -rf export-template/dist-export-validation
 
       - name: Create Cordova Android shell
         run: |
@@ -54,7 +54,7 @@ jobs:
           cordova create cordova com.blopex.mobiforge3d "MobiForge 3D"
           cat > cordova/config.xml <<'XML'
           <?xml version='1.0' encoding='utf-8'?>
-          <widget id="com.blopex.mobiforge3d" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
+          <widget id="com.blopex.mobiforge3d" version="1.2.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
             <name>MobiForge 3D</name>
             <description>Editor 3D móvil con interfaz HTML, gizmos táctiles y scripts Lua.</description>
             <content src="index.html" />
