@@ -10,7 +10,7 @@ import { createIcons, FolderKanban, PanelsTopLeft, Box, CodeXml, Save, Play, Plu
 import './style.css';
 
 const $ = (id) => document.getElementById(id);
-const icons = { FolderKanban, PanelsTopLeft, Box, CodeXml, Save, Play, Plus, PersonStanding, Crosshair, Lightbulb, FolderOpen, ChevronRight, Trash2, ChevronLeft, Cylinder, Circle, Sun, Image, Move3D, Rotate3D, Scaling, ScanEye, Layers3, Square, X, Eye, MousePointer2, Video, Volume2, Upload, Boxes, Type, Download };
+const icons = { FolderKanban, PanelsTopLeft, Box, CodeXml, Save, Play, Plus, PersonStanding, Crosshair, Lightbulb, FolderOpen, ChevronRight, Trash2, ChevronLeft, Cylinder, Circle, Sun, Image, Move3D, Rotate3D, Scaling, ScanEye, Layers3, Square, X, Eye, MousePointer2, Video, Volume2, Upload, Boxes, Type };
 const viewport = $('viewport');
 const canvas = $('scene-canvas');
 const scene = new THREE.Scene();
