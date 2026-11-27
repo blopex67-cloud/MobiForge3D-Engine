@@ -36,6 +36,7 @@
       <aside class="panel left-panel">
         <div class="panel-heading"><span>ESCENA</span><button id="add-menu" class="icon-button" aria-label="Añadir objeto"><i data-lucide="plus"></i></button></div>
         <button id="back-projects" class="scene-name"><i data-lucide="chevron-left"></i><span>Todos los proyectos</span></button>
+        <div class="scene-tools"><select id="scene-select" aria-label="Escena actual"></select><button id="new-scene-button" class="icon-button" title="Nueva escena"><i data-lucide="plus"></i></button></div>
         <div class="divider"></div>
         <div class="panel-heading"><span>JERARQUÍA</span><span id="object-count" class="count">0</span></div>
         <div id="hierarchy" class="hierarchy"></div>
@@ -45,6 +46,13 @@
           <button class="wide-button" data-add="Cylinder"><i data-lucide="cylinder"></i><span>Cilindro</span></button>
           <button class="wide-button" data-add="Light"><i data-lucide="sun"></i><span>Luz</span></button>
           <button class="wide-button" data-add="Sprite"><i data-lucide="image"></i><span>Sprite 2D</span></button>
+          <button class="wide-button" data-add="Button2D"><i data-lucide="mouse-pointer-2"></i><span>Botón HUD</span></button>
+          <button class="wide-button" data-add="Camera"><i data-lucide="video"></i><span>Cámara</span></button>
+          <button class="wide-button" data-add="Audio"><i data-lucide="volume-2"></i><span>Audio</span></button>
+          <button class="wide-button" data-add="Node3D"><i data-lucide="boxes"></i><span>Nodo 3D</span></button>
+          <button class="wide-button" data-add="CharacterBody"><i data-lucide="person-standing"></i><span>CharacterBody</span></button>
+          <button class="wide-button" data-add="Label2D"><i data-lucide="type"></i><span>Texto HUD</span></button>
+          <label class="wide-button import-button"><i data-lucide="upload"></i><span>Importar modelo / imagen</span><input id="asset-input" type="file" accept=".glb,.gltf,.png,.jpg,.jpeg,.webp" multiple hidden></label>
         </div>
       </aside>
       <section class="center-panel">
@@ -67,7 +75,8 @@
         <div class="axis-row"><span class="axis x-axis">X</span><label>Posición</label><input id="px" type="number" step="0.1" value="0" /><input id="py" type="number" step="0.1" value="0" /><input id="pz" type="number" step="0.1" value="0" /></div>
         <div class="axis-row"><span class="axis r-axis">↻</span><label>Rotación °</label><input id="rx" type="number" step="5" value="0" /><input id="ry" type="number" step="5" value="0" /><input id="rz" type="number" step="5" value="0" /></div>
         <div class="axis-row"><span class="axis s-axis">↗</span><label>Escala</label><input id="sx" type="number" step="0.1" value="1" /><input id="sy" type="number" step="0.1" value="1" /><input id="sz" type="number" step="0.1" value="1" /></div>
-        <div class="divider"></div><div class="section-title">MATERIAL</div><label class="field-label" for="material-color">Color</label><div class="color-row"><input id="material-color" type="color" value="#44d7a0"/><span id="color-value">#44D7A0</span></div><div class="inspector-foot">Los cambios se guardan en este dispositivo.</div>
+        <div class="divider"></div><div class="section-title">MATERIAL</div><label class="field-label" for="material-color">Color</label><div class="color-row"><input id="material-color" type="color" value="#44d7a0"/><span id="color-value">#44D7A0</span></div>
+        <div class="divider"></div><div class="section-title">SCRIPT DEL NODO</div><textarea id="node-script" class="node-script" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" placeholder="-- Lua de este nodo"></textarea><button id="run-node-script" class="button run small node-run"><i data-lucide="play"></i><span>Ejecutar script</span></button><div class="inspector-foot">El script se guarda con la escena y se ejecuta al iniciar Probar.</div>
       </aside>
     </main>
   </div>

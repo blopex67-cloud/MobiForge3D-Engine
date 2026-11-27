@@ -1,13 +1,14 @@
 import * as THREE from 'three';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { lua, lauxlib, lualib, to_luastring } from 'fengari';
 import * as interop from 'fengari-interop';
-import { createIcons, FolderKanban, PanelsTopLeft, Box, CodeXml, Save, Play, Plus, PersonStanding, Crosshair, Lightbulb, FolderOpen, ChevronRight, Trash2, ChevronLeft, Cylinder, Circle, Sun, Image, Move3D, Rotate3D, Scaling, ScanEye, Layers3, Square, X, Eye } from 'lucide';
+import { createIcons, FolderKanban, PanelsTopLeft, Box, CodeXml, Save, Play, Plus, PersonStanding, Crosshair, Lightbulb, FolderOpen, ChevronRight, Trash2, ChevronLeft, Cylinder, Circle, Sun, Image, Move3D, Rotate3D, Scaling, ScanEye, Layers3, Square, X, Eye, MousePointer2, Video, Volume2, Upload, Boxes, Type } from 'lucide';
 import './style.css';
 
 const $ = (id) => document.getElementById(id);
-const icons = { FolderKanban, PanelsTopLeft, Box, CodeXml, Save, Play, Plus, PersonStanding, Crosshair, Lightbulb, FolderOpen, ChevronRight, Trash2, ChevronLeft, Cylinder, Circle, Sun, Image, Move3D, Rotate3D, Scaling, ScanEye, Layers3, Square, X, Eye };
+const icons = { FolderKanban, PanelsTopLeft, Box, CodeXml, Save, Play, Plus, PersonStanding, Crosshair, Lightbulb, FolderOpen, ChevronRight, Trash2, ChevronLeft, Cylinder, Circle, Sun, Image, Move3D, Rotate3D, Scaling, ScanEye, Layers3, Square, X, Eye, MousePointer2, Video, Volume2, Upload, Boxes, Type };
 const viewport = $('viewport');
 const canvas = $('scene-canvas');
 const scene = new THREE.Scene();
@@ -26,7 +27,7 @@ orbit.target.set(0, 0.7, 0);
 const transform = new TransformControls(camera, renderer.domElement);
 transform.setSize(0.9);
 transform.addEventListener('dragging-changed', (e) => { orbit.enabled = !e.value; });
-transform.addEventListener('objectChange', refreshInspector);
+transform.addEventListener('objectChange', () => { refreshInspector(); markDirty(); });
 scene.add(transform.getHelper());
 
 scene.add(new THREE.HemisphereLight(0xc8dcff, 0x202b37, 2.0));
@@ -47,9 +48,15 @@ let areaMode = '3d';
 let playCharacter = null;
 let playYaw = 0;
 let playPitch = 0;
+let playSnapshot = null;
+let activeSceneId = null;
 const pressedKeys = new Set();
 const joystick = { x: 0, y: 0 };
 const savedProjects = JSON.parse(localStorage.getItem('mobiforge-projects') || '[]');
+const assetDb = new Promise((resolve,reject)=>{if(!window.indexedDB){reject(new Error('IndexedDB no disponible'));return;}const req=indexedDB.open('mobiforge-assets',1);req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains('files'))req.result.createObjectStore('files');};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});
+async function putAsset(key,blob){const db=await assetDb;return new Promise((resolve,reject)=>{const tx=db.transaction('files','readwrite');tx.objectStore('files').put(blob,key);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});}
+async function getAsset(key){const db=await assetDb;return new Promise((resolve,reject)=>{const tx=db.transaction('files','readonly'),req=tx.objectStore('files').get(key);req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error);});}
+async function deleteProjectAssets(id){try{const db=await assetDb;await new Promise((resolve,reject)=>{const tx=db.transaction('files','readwrite'),req=tx.objectStore('files').openCursor();req.onsuccess=()=>{const c=req.result;if(!c)return;if(String(c.key).startsWith(`${id}:`))c.delete();c.continue();};tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});}catch{}}
 const defaultColor = '#44d7a0';
 const primitiveColor = { Cube: '#43d7a0', Sphere: '#649cff', Cylinder: '#ffad5a', Light: '#ffe273' };
 
@@ -81,20 +88,25 @@ function addObject(kind = 'Cube', name = '') {
     const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.14, 16, 12), new THREE.MeshBasicMaterial({ color: '#ffe273' }));
     bulb.name = 'Light marker'; obj.add(bulb);
     obj.userData.color = '#ffe273';
-  } else if (kind === 'Player3P' || kind === 'Player1P') {
-    obj = makeCharacter(kind); obj.userData.color = kind === 'Player1P' ? '#5686b9' : '#48d6a5';
-  } else if (kind === 'Sprite') {
-    obj = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.5), new THREE.MeshBasicMaterial({ color: '#f7c65f', side: THREE.DoubleSide }));
-    obj.userData.color = '#f7c65f'; obj.position.z = 0;
+  } else if (kind === 'Player3P' || kind === 'Player1P' || kind === 'CharacterBody') {
+    obj = makeCharacter(kind==='CharacterBody'?'Player3P':kind); obj.userData.color = kind === 'Player1P' ? '#5686b9' : '#48d6a5';
+  } else if (kind === 'Sprite' || kind === 'Button2D' || kind === 'Label2D') {
+    const c=document.createElement('canvas');c.width=512;c.height=192;const ctx=c.getContext('2d');
+    if(kind==='Button2D'){ctx.fillStyle='#36c99a';ctx.beginPath();ctx.roundRect(8,8,496,176,36);ctx.fill();ctx.fillStyle='#08251b';ctx.font='bold 56px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('BOTÓN HUD',256,96);}
+    else if(kind==='Label2D'){ctx.fillStyle='#fff';ctx.font='bold 58px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('Texto HUD',256,96);}
+    else {ctx.fillStyle='#f7c65f';ctx.fillRect(30,30,452,132);}
+    const tex=new THREE.CanvasTexture(c);obj=new THREE.Mesh(new THREE.PlaneGeometry(kind==='Button2D'?2.2:1.8,kind==='Button2D'?0.82:1.5),new THREE.MeshBasicMaterial({map:tex,transparent:true,side:THREE.DoubleSide}));obj.userData.color=kind==='Button2D'?'#36c99a':'#f7c65f';
+  } else if (kind === 'Camera' || kind === 'Audio' || kind === 'Node3D') {
+    const g=new THREE.Group(),color=kind==='Camera'?'#65a5ff':kind==='Audio'?'#db9bff':'#aebdcc';const cube=new THREE.Mesh(new THREE.BoxGeometry(.65,.48,.42),new THREE.MeshStandardMaterial({color}));cube.castShadow=true;g.add(cube);const tip=new THREE.Mesh(new THREE.SphereGeometry(.1,12,8),new THREE.MeshBasicMaterial({color:'#fff'}));tip.position.z=-.3;g.add(tip);obj=g;obj.userData.color=color;
   } else {
     obj = meshFor(kind);
     obj.userData.color = primitiveColor[kind] || defaultColor;
   }
-  const kindNames = { Light:'Luz', Sphere:'Esfera', Cylinder:'Cilindro', Sprite:'Sprite', Player3P:'Jugador 3P', Player1P:'Jugador 1P' };
+  const kindNames = { Light:'Luz', Sphere:'Esfera', Cylinder:'Cilindro', Sprite:'Sprite', Button2D:'Botón HUD', Label2D:'Texto HUD', Camera:'Cámara', Audio:'Audio', Node3D:'Nodo 3D', CharacterBody:'CharacterBody', Player3P:'Jugador 3P', Player1P:'Jugador 1P' };
   obj.name = name || `${kindNames[kind] || 'Cubo'} ${count}`;
-  obj.userData.kind = kind;
+  obj.userData.kind = kind; obj.userData.script='';
   const spread = Math.min(objects.length * 0.55, 3);
-  obj.position.set((objects.length % 3 - 1) * 1.5, kind === 'Light' ? 2.5 : 0.65, -spread);
+  obj.position.set((objects.length % 3 - 1) * 1.5, kind === 'Light' ? 2.5 : (areaMode==='2d'?0:0.65), -spread);
   scene.add(obj); objects.push(obj); selectObject(obj); updateHierarchy(); markDirty();
   return obj.name;
 }
@@ -110,7 +122,7 @@ function updateHierarchy() {
   $('object-count').textContent = String(objects.length);
   objects.forEach((obj) => {
     const row = document.createElement('button'); row.className = `hierarchy-row${obj === selected ? ' active' : ''}`;
-    const icon = obj.userData.kind === 'Light' ? 'sun' : obj.userData.kind === 'Sphere' ? 'circle' : obj.userData.kind === 'Cylinder' ? 'cylinder' : obj.userData.kind === 'Sprite' ? 'image' : (obj.userData.kind || '').startsWith('Player') ? 'person-standing' : 'box';
+    const iconMap={Light:'sun',Sphere:'circle',Cylinder:'cylinder',Sprite:'image',Button2D:'mouse-pointer-2',Label2D:'type',Camera:'video',Audio:'volume-2',Node3D:'boxes',CharacterBody:'person-standing'};const icon=iconMap[obj.userData.kind]||((obj.userData.kind||'').startsWith('Player')?'person-standing':'box');
     row.innerHTML = `<i class="object-icon" data-lucide="${icon}"></i><span class="object-name"></span><span class="visibility"><i data-lucide="eye"></i></span>`;
     row.querySelector('.object-name').textContent = obj.name;
     row.addEventListener('click', () => selectObject(obj)); list.appendChild(row);
@@ -121,45 +133,28 @@ function refreshInspector() {
   const disabled = !selected;
   $('object-name').disabled = disabled;
   $('object-name').value = selected?.name || 'Sin selección';
+  $('node-script').disabled=!selected;if(document.activeElement!==$('node-script'))$('node-script').value=selected?.userData.script||'';
   const vals = { px: selected?.position.x, py: selected?.position.y, pz: selected?.position.z,
     rx: selected ? THREE.MathUtils.radToDeg(selected.rotation.x) : 0, ry: selected ? THREE.MathUtils.radToDeg(selected.rotation.y) : 0, rz: selected ? THREE.MathUtils.radToDeg(selected.rotation.z) : 0,
     sx: selected?.scale.x, sy: selected?.scale.y, sz: selected?.scale.z };
   for (const [id, val] of Object.entries(vals)) { const el = $(id); el.disabled = disabled; if (document.activeElement !== el) el.value = Number(val ?? (id.startsWith('s') ? 1 : 0)).toFixed(2); }
   const color = selected?.userData.color || defaultColor;
-  $('material-color').disabled = disabled || selected?.userData.kind === 'Light';
+  $('material-color').disabled = disabled || !selected?.material?.color;
   if (!selected || selected.userData.kind !== 'Light') $('material-color').value = color;
   $('color-value').textContent = color.toUpperCase();
 }
-function markDirty() { $('save-state').textContent = '● Guardando…'; $('save-state').classList.add('dirty'); $('status-text').textContent = '● CAMBIOS'; if (activeProject) { clearTimeout(autoSaveTimer); autoSaveTimer=setTimeout(saveScene,700); } }
-function saveScene() {
-  try {
-    const data = objects.map((o) => ({ name:o.name, kind:o.userData.kind, pos:o.position.toArray(), rot:o.rotation.toArray(), scale:o.scale.toArray(), color:o.userData.color || defaultColor }));
-    if (!activeProject) return;
-    localStorage.setItem(`mobiforge-scene:${activeProject.id}`, JSON.stringify(data));
-    activeProject.updated = Date.now(); persistProjects();
-    $('save-state').textContent = '● Guardado local'; $('save-state').classList.remove('dirty'); $('status-text').textContent = '● GUARDADO';
-  } catch (err) { $('status-text').textContent = '● ERROR AL GUARDAR'; }
-}
-function loadScene() {
-  try {
-    if (!activeProject) return false;
-    const data = JSON.parse(localStorage.getItem(`mobiforge-scene:${activeProject.id}`) || 'null');
-    if (!Array.isArray(data)) return false;
-    for (const o of [...objects]) removeObject(o);
-    for (const item of data) {
-      const name = addObject(item.kind || 'Cube', item.name);
-      const obj = objects.find((x) => x.name === name);
-      if (!obj) continue;
-      obj.position.fromArray(item.pos || [0,0.65,0]); obj.rotation.set(...(item.rot || [0,0,0])); obj.scale.fromArray(item.scale || [1,1,1]);
-      if (obj.material?.color && item.color) { obj.material.color.set(item.color); obj.userData.color = item.color; } else if (item.color) { obj.traverse((n) => { if (n.material?.color && n !== obj.children?.[1]) n.material.color.set(item.color); }); obj.userData.color = item.color; }
-    }
-    if (objects.length) selectObject(objects[0]);
-    $('save-state').textContent = '● Guardado local'; $('save-state').classList.remove('dirty');
-    return true;
-  } catch { return false; }
-}
-function removeObject(obj) { if (!obj) return; if (selected === obj) { transform.detach(); selected = null; } scene.remove(obj); objects.splice(objects.indexOf(obj), 1); obj.traverse((node) => { node.geometry?.dispose?.(); if (Array.isArray(node.material)) node.material.forEach((m) => m.dispose()); else node.material?.dispose?.(); }); updateHierarchy(); refreshInspector(); markDirty(); }
-
+function sceneStorageKey(project,sceneId){return `mobiforge-scene:${project.id}:${sceneId}`;}
+function markDirty(){if(playMode)return;$('save-state').textContent='● Guardando…';$('save-state').classList.add('dirty');$('status-text').textContent='● CAMBIOS';if(activeProject){clearTimeout(autoSaveTimer);autoSaveTimer=setTimeout(saveScene,450);}}
+function saveScene(){try{if(!activeProject||!activeSceneId||playMode)return;const data=objects.map(o=>({name:o.name,kind:o.userData.kind,pos:o.position.toArray(),rot:o.rotation.toArray(),scale:o.scale.toArray(),color:o.userData.color||null,script:o.userData.script||'',assetKey:o.userData.assetKey||null,assetName:o.userData.assetName||''}));localStorage.setItem(sceneStorageKey(activeProject,activeSceneId),JSON.stringify(data));activeProject.currentSceneId=activeSceneId;activeProject.updated=Date.now();persistProjects();$('save-state').textContent='● Guardado local';$('save-state').classList.remove('dirty');$('status-text').textContent='● GUARDADO';}catch(err){$('status-text').textContent='● ERROR AL GUARDAR';$('save-state').textContent='● No se pudo guardar';}}
+async function restoreAsset(item){const blob=await getAsset(item.assetKey);if(!blob)throw new Error(`No existe el archivo ${item.assetName||item.name}`);const url=URL.createObjectURL(blob);let obj;if(item.kind==='Image'){const tex=new THREE.TextureLoader().load(url,()=>{tex.colorSpace=THREE.SRGBColorSpace;tex.needsUpdate=true;URL.revokeObjectURL(url);});obj=new THREE.Mesh(new THREE.PlaneGeometry(1.8,1.8),new THREE.MeshBasicMaterial({map:tex,transparent:true,side:THREE.DoubleSide}));}else{const buffer=await blob.arrayBuffer();const gltf=await new Promise((resolve,reject)=>new GLTFLoader().parse(buffer,'',resolve,reject));obj=gltf.scene;obj.traverse(n=>{if(n.isMesh){n.castShadow=true;n.receiveShadow=true;}});URL.revokeObjectURL(url);}obj.name=item.name;obj.userData.kind=item.kind;obj.userData.script=item.script||'';obj.userData.color=item.color||null;obj.userData.assetKey=item.assetKey;obj.userData.assetName=item.assetName;obj.position.fromArray(item.pos||[0,0,0]);obj.rotation.set(...(item.rot||[0,0,0]));obj.scale.fromArray(item.scale||[1,1,1]);scene.add(obj);objects.push(obj);}
+async function loadScene(){try{if(!activeProject||!activeSceneId)return false;let raw=localStorage.getItem(sceneStorageKey(activeProject,activeSceneId));if(!raw&&activeProject.scenes?.length===1){raw=localStorage.getItem(`mobiforge-scene:${activeProject.id}`);if(raw)localStorage.setItem(sceneStorageKey(activeProject,activeSceneId),raw);}const data=JSON.parse(raw||'null');if(!Array.isArray(data))return false;clearObjects();for(const item of data){if(item.assetKey){await restoreAsset(item);continue;}const name=addObject(item.kind||'Cube',item.name),obj=objects.find(x=>x.name===name);if(!obj)continue;obj.position.fromArray(item.pos||[0,.65,0]);obj.rotation.set(...(item.rot||[0,0,0]));obj.scale.fromArray(item.scale||[1,1,1]);obj.userData.script=item.script||'';if(obj.material?.color&&item.color){obj.material.color.set(item.color);obj.userData.color=item.color;}}if(objects.length)selectObject(objects[0]);else{updateHierarchy();refreshInspector();}$('save-state').textContent='● Guardado local';$('save-state').classList.remove('dirty');return true;}catch(err){console.error('No se pudo cargar la escena',err);$('status-text').textContent='● ERROR AL CARGAR';return false;}}
+function removeObject(obj,silent=false){if(!obj)return;if(selected===obj){transform.detach();selected=null;}scene.remove(obj);const i=objects.indexOf(obj);if(i>=0)objects.splice(i,1);obj.traverse(n=>{n.geometry?.dispose?.();if(Array.isArray(n.material))n.material.forEach(m=>m.dispose());else n.material?.dispose?.();});updateHierarchy();refreshInspector();if(!silent)markDirty();}
+function clearObjects(){transform.detach();for(const o of [...objects])removeObject(o,true);selected=null;updateHierarchy();refreshInspector();}
+function populateScenes(){const select=$('scene-select');select.replaceChildren();for(const s of activeProject?.scenes||[]){const option=document.createElement('option');option.value=s.id;option.textContent=s.name;select.appendChild(option);}select.value=activeSceneId||'';}
+function ensureProjectScenes(project){if(!Array.isArray(project.scenes)||!project.scenes.length)project.scenes=[{id:'main',name:'Escena principal'}];activeSceneId=project.currentSceneId&&project.scenes.some(s=>s.id===project.currentSceneId)?project.currentSceneId:project.scenes[0].id;project.currentSceneId=activeSceneId;populateScenes();}
+async function switchScene(id){if(!id||id===activeSceneId)return;saveScene();activeSceneId=id;activeProject.currentSceneId=id;populateScenes();clearObjects();if(!await loadScene())$('save-state').textContent='● Escena nueva';setArea('3d');}
+$('scene-select').addEventListener('change',()=>switchScene($('scene-select').value));
+$('new-scene-button').addEventListener('click',()=>{if(!activeProject)return;saveScene();const item={id:`s-${Date.now()}`,name:`Escena ${activeProject.scenes.length+1}`};activeProject.scenes.push(item);activeSceneId=item.id;activeProject.currentSceneId=item.id;persistProjects();populateScenes();clearObjects();addObject('Cube','Cubo');saveScene();});
 for (const axis of ['px','py','pz','rx','ry','rz','sx','sy','sz']) $(axis).addEventListener('change', () => {
   if (!selected) return; const value = Number($(axis).value) || 0;
   if (axis[0] === 'p') selected.position[axis[1]] = value;
@@ -169,6 +164,8 @@ for (const axis of ['px','py','pz','rx','ry','rz','sx','sy','sz']) $(axis).addEv
 });
 $('object-name').addEventListener('change', () => { if (selected && $('object-name').value.trim()) { selected.name = $('object-name').value.trim(); updateHierarchy(); markDirty(); } });
 $('material-color').addEventListener('input', () => { if (!selected || !selected.material?.color) return; selected.material.color.set($('material-color').value); selected.userData.color = $('material-color').value; $('color-value').textContent = $('material-color').value.toUpperCase(); markDirty(); });
+$('node-script').addEventListener('input',()=>{if(selected){selected.userData.script=$('node-script').value;markDirty();}});
+$('run-node-script').addEventListener('click',()=>{if(selected?.userData.script?.trim())executeLua(selected.userData.script,selected);});
 $('delete-button').addEventListener('click', () => removeObject(selected));
 $('save-button').addEventListener('click', saveScene);
 $('play-button').addEventListener('click', () => togglePlay());
@@ -185,16 +182,19 @@ canvas.addEventListener('pointerup', (e) => {
   if (!downPoint || Math.hypot(e.clientX-downPoint.x, e.clientY-downPoint.y) > 8 || transform.dragging) return;
   const rect = canvas.getBoundingClientRect(); pointer.set((e.clientX-rect.left)/rect.width*2-1, -((e.clientY-rect.top)/rect.height)*2+1); raycaster.setFromCamera(pointer,camera);
   const hits = raycaster.intersectObjects(objects,true); if (!hits.length) return;
-  let target = hits[0].object; while (target.parent && !objects.includes(target)) target=target.parent; if (objects.includes(target)) selectObject(target);
+  let target = hits[0].object; while (target.parent && !objects.includes(target)) target=target.parent; if(!objects.includes(target))return;
+  if(playMode){if(target.userData.kind==='Button2D'&&target.userData.script?.trim())executeLua(target.userData.script,target);return;}selectObject(target);
 });
 $('empty-hint').hidden = true;
+async function importFiles(files){for(const file of [...files]){try{const ext=file.name.split('.').pop().toLowerCase(),key=`${activeProject.id}:${activeSceneId}:${Date.now()}-${Math.random().toString(36).slice(2,6)}`;await putAsset(key,file);if(['png','jpg','jpeg','webp'].includes(ext)){const url=URL.createObjectURL(file),tex=new THREE.TextureLoader().load(url,()=>{tex.colorSpace=THREE.SRGBColorSpace;tex.needsUpdate=true;URL.revokeObjectURL(url);});const obj=new THREE.Mesh(new THREE.PlaneGeometry(1.8,1.8),new THREE.MeshBasicMaterial({map:tex,transparent:true,side:THREE.DoubleSide}));obj.name=file.name;obj.userData.kind='Image';obj.userData.assetKey=key;obj.userData.assetName=file.name;obj.userData.script='';obj.position.set(0,areaMode==='2d'?0:1,0);scene.add(obj);objects.push(obj);selectObject(obj);markDirty();}else if(ext==='glb'||ext==='gltf'){const buffer=await file.arrayBuffer();const gltf=await new Promise((resolve,reject)=>new GLTFLoader().parse(buffer,'',resolve,reject));const obj=gltf.scene;obj.name=file.name.replace(/\.(glb|gltf)$/i,'');obj.userData.kind='Model';obj.userData.assetKey=key;obj.userData.assetName=file.name;obj.userData.script='';obj.traverse(n=>{if(n.isMesh){n.castShadow=true;n.receiveShadow=true;}});scene.add(obj);objects.push(obj);selectObject(obj);markDirty();}}catch(err){$('status-text').textContent=`● ERROR IMPORTACIÓN: ${String(err.message||err).slice(0,45)}`;}}$('asset-input').value='';updateHierarchy();}
+$('asset-input').addEventListener('change',()=>{if($('asset-input').files?.length)importFiles($('asset-input').files);});
 function resize() { const w = Math.max(1, viewport.clientWidth), h = Math.max(1, viewport.clientHeight); renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); }
 new ResizeObserver(resize).observe(viewport); window.addEventListener('orientationchange', () => setTimeout(resize,150));
 function animate() { requestAnimationFrame(animate); if (playMode) updatePlay(1/60); else orbit.update(); renderer.render(scene,camera); }
 resize(); animate();
 
 // Fengari runs Lua 5.3 in a browser VM. Only the small engine API is exposed to scripts.
-function executeLua(source) {
+function executeLua(source,currentNode=null) {
   const out = $('lua-output'); out.textContent = '';
   const log = (...args) => { out.textContent += `${args.map(String).join('\t')}\n`; };
   const L = lauxlib.luaL_newstate();
@@ -208,6 +208,9 @@ function executeLua(source) {
     select: (name) => { const obj=objects.find((o)=>o.name===String(name)); if (!obj) throw new Error(`No existe el objeto: ${name}`); selectObject(obj); return obj.name; },
     set_selected_position: (x=0,y=0,z=0) => { if (!selected) throw new Error('No hay objeto seleccionado'); selected.position.set(Number(x)||0,Number(y)||0,Number(z)||0); refreshInspector(); markDirty(); },
     set_selected_color: (hex='#44d7a0') => { if (!selected?.material?.color) throw new Error('Selecciona una malla primero'); selected.material.color.set(String(hex)); selected.userData.color=String(hex); refreshInspector(); markDirty(); },
+    node_name: () => currentNode?.name || '',
+    set_node_position: (x=0,y=0,z=0) => { if(!currentNode)throw new Error('Script sin nodo');currentNode.position.set(Number(x)||0,Number(y)||0,Number(z)||0);if(currentNode===selected)refreshInspector();markDirty(); },
+    move_node: (x=0,y=0,z=0) => { if(!currentNode)throw new Error('Script sin nodo');currentNode.position.x+=Number(x)||0;currentNode.position.y+=Number(y)||0;currentNode.position.z+=Number(z)||0;if(currentNode===selected)refreshInspector();markDirty(); },
     log: (...args) => log(...args)
   };
   interop.push(L, api); lua.lua_setglobal(L,to_luastring('engine'));
@@ -237,29 +240,29 @@ function renderProjects() {
     const open=document.createElement('button'); open.className='recent-open'; open.innerHTML=`<span class="recent-icon"><i data-lucide="${icon}"></i></span><span class="recent-copy"><b></b><small></small></span><i class="recent-arrow" data-lucide="chevron-right"></i>`;
     open.querySelector('b').textContent=project.name; open.querySelector('small').textContent=`${project.template==='first'?'Primera persona':project.template==='third'?'Tercera persona':'Proyecto 3D'} · ${project.updated?new Date(project.updated).toLocaleDateString('es-MX'):'Nuevo'}`;
     open.addEventListener('click',()=>openProject(project));
-    const remove=document.createElement('button'); remove.className='recent-delete'; remove.title='Eliminar proyecto'; remove.innerHTML='<i data-lucide="trash-2"></i>'; remove.addEventListener('click',(e)=>{e.stopPropagation();if(!confirm(`¿Eliminar “${project.name}” de este dispositivo?`))return;localStorage.removeItem(`mobiforge-scene:${project.id}`);const i=savedProjects.findIndex(x=>x.id===project.id);if(i>=0)savedProjects.splice(i,1);if(activeProject?.id===project.id)showProjects();persistProjects();});
+    const remove=document.createElement('button'); remove.className='recent-delete'; remove.title='Eliminar proyecto'; remove.innerHTML='<i data-lucide="trash-2"></i>'; remove.addEventListener('click',(e)=>{e.stopPropagation();if(!confirm(`¿Eliminar “${project.name}” de este dispositivo?`))return;for(const sc of project.scenes||[])localStorage.removeItem(sceneStorageKey(project,sc.id));localStorage.removeItem(`mobiforge-scene:${project.id}`);deleteProjectAssets(project.id);const i=savedProjects.findIndex(x=>x.id===project.id);if(i>=0)savedProjects.splice(i,1);if(activeProject?.id===project.id){clearTimeout(autoSaveTimer);activeProject=null;activeSceneId=null;showProjects();}persistProjects();});
     card.append(open,remove);host.appendChild(card);
   }
   createIcons({icons});
 }
 function setProjectHeader() { $('project-name-top').textContent=activeProject?.name||'Elige un proyecto'; }
-function clearObjects() { for (const o of [...objects]) removeObject(o); transform.detach(); selected=null; }
-function openProject(project) {
-  activeProject=project; setProjectHeader(); $('project-home').classList.add('hidden'); $('editor-layout').classList.remove('hidden');
+async function openProject(project) {
+  if(activeProject&&!$('editor-layout').classList.contains('hidden'))saveScene();
+  activeProject=project;ensureProjectScenes(project);persistProjects();setProjectHeader(); $('project-home').classList.add('hidden'); $('editor-layout').classList.remove('hidden');
   document.querySelectorAll('.workspace-tab').forEach(b=>b.classList.toggle('selected',b.dataset.area==='3d'));
   clearObjects(); areaMode='3d'; setArea('3d');
-  if (!loadScene()) { seedTemplate(project.template); saveScene(); }
+  if (!await loadScene()) { seedTemplate(project.template); saveScene(); }
   setArea('3d'); setProjectHeader(); resize();
 }
 function showProjects() {
-  if (playMode) togglePlay(false);
+  if(playMode)togglePlay(false);else if(activeProject)saveScene();
   $('editor-layout').classList.add('hidden'); $('project-home').classList.remove('hidden');
   document.querySelectorAll('.workspace-tab').forEach(b=>b.classList.toggle('selected',b.dataset.area==='projects'));
   createIcons({icons}); renderProjects(); setTimeout(resize,100);
 }
 function createProject(template='blank', name='') {
   const labels={blank:'Mi proyecto',third:'Aventura tercera persona',first:'Exploración primera persona'};
-  const project={id:`p-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,name:name.trim()||labels[template]||labels.blank,template,updated:Date.now()};
+  const project={id:`p-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,name:name.trim()||labels[template]||labels.blank,template,updated:Date.now(),scenes:[{id:'main',name:'Escena principal'}],currentSceneId:'main'};
   savedProjects.unshift(project); persistProjects(); openProject(project);
 }
 function seedTemplate(template) {
@@ -290,13 +293,13 @@ function setArea(mode) {
   if (mode==='2d') {
     floor.visible=false; grid.rotation.x=Math.PI/2; grid.position.set(0,0,-0.08); axes.visible=false;
     camera.fov=30; camera.updateProjectionMatrix(); camera.position.set(0,0,20); camera.up.set(0,1,0); camera.lookAt(0,0,0); orbit.target.set(0,0,0); orbit.enabled=false;
-    objects.forEach(o=>{o.visible=o.userData.kind==='Sprite';});
-    if(activeProject&&!objects.some(o=>o.userData.kind==='Sprite')){addObject('Sprite','Sprite 2D');objects.at(-1).position.set(0,0,0);}
-    $('viewport-label').textContent='VISTA 2D'; $('viewport-hint').textContent='Toca un sprite · usa el gizmo para editar';
+    const hud=new Set(['Sprite','Button2D','Label2D','Image']);objects.forEach(o=>{o.visible=hud.has(o.userData.kind);});
+    if(selected&&!selected.visible){const hudSelection=objects.find(o=>o.visible);if(hudSelection)selectObject(hudSelection);else{transform.detach();selected=null;refreshInspector();updateHierarchy();}}
+    $('viewport-label').textContent='VISTA 2D'; $('viewport-hint').textContent='Añade botones e imágenes HUD · mueve con el gizmo';$('empty-hint').textContent='Añade un botón, texto o imagen HUD';$('empty-hint').hidden=[...objects].some(o=>o.visible);
     transform.enabled=true;
   } else {
     floor.visible=true; grid.rotation.x=0; grid.position.set(0,0,0); axes.visible=true;
-    objects.forEach(o=>{o.visible=true;});
+    objects.forEach(o=>{o.visible=true;});$('empty-hint').textContent='Añade un nodo a la escena';$('empty-hint').hidden=objects.length>0;
     if(mode==='3d') { camera.fov=45;camera.updateProjectionMatrix();const focus=selected?.position||new THREE.Vector3(0,0.7,0);orbit.target.copy(focus);camera.position.set(focus.x+7,focus.y+5,focus.z+8);camera.up.set(0,1,0);camera.lookAt(focus);orbit.enabled=!playMode; }
     $('viewport-label').textContent='VISTA 3D'; $('viewport-hint').textContent='Arrastra para orbitar · toca un objeto para elegirlo';
   }
@@ -310,18 +313,16 @@ document.querySelectorAll('.workspace-tab').forEach(button=>button.addEventListe
   setArea(button.dataset.area);
 }));
 
+function collectColors(obj){const a=[];obj.traverse(n=>{const ms=Array.isArray(n.material)?n.material:[n.material];for(const m of ms)if(m?.color)a.push([m,m.color.clone()]);});return a;}
 function togglePlay(on=!playMode) {
-  if (on && areaMode!=='3d') setArea('3d');
-  playMode=on; const kind=activeProject?.template==='first'?'Player1P':activeProject?.template==='third'?'Player3P':null;
-  playCharacter=objects.find(o=>o.userData.kind===kind)||objects.find(o=>(o.userData.kind||'').startsWith('Player'))||null;
-  $('play-controls').classList.toggle('hidden',!playMode); $('play-button').classList.toggle('playing',playMode);
+  if(on&&!playMode)playSnapshot={objects:new Map(objects.map(o=>[o,{position:o.position.clone(),rotation:o.rotation.clone(),scale:o.scale.clone(),visible:o.visible,script:o.userData.script,color:o.userData.color,materials:collectColors(o)}])),camera:camera.position.clone(),cameraRotation:camera.rotation.clone(),target:orbit.target.clone(),selected};
+  playMode=on;const kind=activeProject?.template==='first'?'Player1P':activeProject?.template==='third'?'Player3P':null;
+  playCharacter=areaMode==='2d'?null:(objects.find(o=>o.userData.kind===kind)||objects.find(o=>(o.userData.kind||'').startsWith('Player'))||null);
+  $('play-controls').classList.toggle('hidden',!playMode||areaMode==='2d');$('play-button').classList.toggle('playing',playMode);
   $('play-button').innerHTML=playMode?'<i data-lucide="square"></i><span>Detener</span>':'<i data-lucide="play"></i><span>Probar</span>';
-  transform.enabled=!playMode; orbit.enabled=!playMode&&areaMode==='3d';
-  if(playMode){if(!playCharacter){addObject('Player3P','Jugador de prueba');playCharacter=objects.at(-1);playCharacter.position.set(0,0,0);}
-    const d=new THREE.Vector3();camera.getWorldDirection(d);playYaw=Math.atan2(d.x,-d.z);playPitch=0;
-    if(activeProject?.template==='first')playCharacter.visible=false;
-    $('status-text').textContent='● MODO JUEGO';
-  } else {$('status-text').textContent='● LISTO';if(playCharacter){playCharacter.visible=true;camera.position.set(playCharacter.position.x+5,playCharacter.position.y+3,playCharacter.position.z+7);orbit.target.copy(playCharacter.position);orbit.enabled=areaMode==='3d';}playCharacter=null;joystick.x=0;joystick.y=0;}
+  transform.enabled=!playMode;transform.getHelper().visible=!playMode;orbit.enabled=!playMode&&areaMode==='3d';
+  if(playMode){if(areaMode==='3d'&&!playCharacter){addObject('Player3P','Jugador de prueba');playCharacter=objects.at(-1);playCharacter.position.set(0,0,0);}if(playCharacter&&activeProject?.template==='first')playCharacter.visible=false;$('status-text').textContent=areaMode==='2d'?'● EJECUTANDO HUD':'● MODO JUEGO';for(const o of [...objects])if(o.userData.script?.trim()&&o.userData.kind!=='Button2D')executeLua(o.userData.script,o);}
+  else{$('status-text').textContent='● LISTO';transform.getHelper().visible=true;if(playSnapshot){for(const o of [...objects])if(!playSnapshot.objects.has(o))removeObject(o,true);for(const [o,v] of playSnapshot.objects){if(!objects.includes(o))continue;o.position.copy(v.position);o.rotation.copy(v.rotation);o.scale.copy(v.scale);o.visible=v.visible;o.userData.script=v.script;o.userData.color=v.color;for(const [m,c] of v.materials)m.color.copy(c);}camera.position.copy(playSnapshot.camera);camera.rotation.copy(playSnapshot.cameraRotation);orbit.target.copy(playSnapshot.target);selected=playSnapshot.selected;playSnapshot=null;}playCharacter=null;joystick.x=0;joystick.y=0;pressedKeys.clear();if(selected){transform.attach(selected);refreshInspector();updateHierarchy();}orbit.enabled=areaMode==='3d';}
   createIcons({icons});
 }
 function updatePlay(dt) {
@@ -350,3 +351,7 @@ function releasePad(e){if(e.pointerId===padPointer){padPointer=null;joystick.x=0
 movePad.addEventListener('pointerup',releasePad);movePad.addEventListener('pointercancel',releasePad);
 canvas.addEventListener('pointermove',e=>{if(!playMode||!downPoint||!e.buttons)return;const dx=e.clientX-downPoint.x,dy=e.clientY-downPoint.y;downPoint={x:e.clientX,y:e.clientY};playYaw-=dx*0.006;playPitch=Math.max(-1.15,Math.min(1.15,playPitch-dy*0.004));});
 createIcons({icons});renderProjects();setProjectHeader();
+window.addEventListener('pagehide',()=>{if(activeProject&&!playMode)saveScene();});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&activeProject&&!playMode)saveScene();});
+window.addEventListener('pagehide',()=>{if(activeProject&&!playMode)saveScene();});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&activeProject&&!playMode)saveScene();});

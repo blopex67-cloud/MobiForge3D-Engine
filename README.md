@@ -1,17 +1,15 @@
 # MobiForge 3D
 
-Editor 3D para teléfonos, con interfaz HTML/CSS/JavaScript, empaquetado Android en orientación horizontal.
+Editor móvil horizontal con interfaz HTML/Three.js, empaquetado con Cordova.
 
-## Organización actual
-- **Proyectos:** pantalla de inicio con plantillas vacía, primera persona y tercera persona; proyectos y escenas se guardan por separado en el almacenamiento local.
-- **2D:** espacio XY con sprites y gizmos, y modo de visualización separado.
-- **3D:** visor táctil, jerarquía, creación de primitivas, inspector y gizmos de mover, rotar y escalar.
-- **Script:** panel Lua 5.3 con API del editor y registro de ejecución.
-- **Iconos:** Lucide, empaquetados en la app para que no dependan de conexión durante el uso.
+- Pantalla de proyectos con guardado local automático y escenas independientes por proyecto.
+- Espacios Proyectos, 2D, 3D y Script.
+- Nodos básicos para objetos 3D, HUD 2D, botones, texto, cámara, audio y personaje.
+- Script Lua editable por nodo, guardado con la escena; el sandbox expone una API acotada del editor.
+- En Probar se ocultan gizmos; al detener se restaura la escena del editor para que cada ejecución vuelva al spawn.
+- Plantillas de aprendizaje en primera y tercera persona con controles táctiles/teclado.
+- Importación de modelos GLB autocontenidos e imágenes, guardados localmente en IndexedDB.
 
-Las plantillas de primera y tercera persona incluyen un personaje inicial, escenario sencillo, teclado y control táctil en modo Probar. Es una base de aprendizaje: todavía no es un motor completo equivalente a Unity, Godot o Unreal. El movimiento de ejemplo no es un sistema de físicas/collisiones completo y el sandbox Lua no ejecuta extensiones nativas arbitrarias.
+Es una implementación propia del editor web, inspirada en flujos habituales de motores 3D; no copia código fuente de Godot. Lua usa Fengari/Lua 5.3, pero no ejecuta módulos nativos arbitrarios. Los personajes son plantillas de inicio, no sistemas completos de físicas o colisiones. Compilar no sustituye a validar visual y táctilmente en un teléfono real.
 
-## Build Android
-El workflow **Build MobiForge 3D HTML Android APK** compila la interfaz web y la empaqueta mediante Cordova en un APK debug. Compilar no sustituye a una prueba visual/táctil en un teléfono real.
-
-El prototipo Godot previo se conserva en `Main.tscn`, `scripts/editor.gd`, `project.godot` y `export_presets.cfg`.
+El workflow **Build MobiForge 3D HTML Android APK** compila el proyecto y publica el APK debug como artefacto de Actions.
