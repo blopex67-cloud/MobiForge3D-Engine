@@ -17,13 +17,96 @@ import { createIcons, FolderKanban, PanelsTopLeft, Box, CodeXml, Save, Play, Plu
 import './style.css';
 
 const $ = (id) => document.getElementById(id);
+const IS_TOUCH = !!(window.matchMedia && window.matchMedia('(pointer:coarse)').matches);
+const TAP_SLOP = IS_TOUCH ? 16 : 8;
+const TOUCH_SCALE = IS_TOUCH ? 1.35 : 1;
+// Diálogos propios: sustituyen prompt/alert/confirm, que en móvil bloquean la UI y son difíciles de tocar.
+const ui = {
+  host: null,
+  open(build) {
+    if (!this.host) {
+      this.host = document.createElement('div');
+      this.host.className = 'mf-overlay hidden';
+      document.body.appendChild(this.host);
+    }
+    return new Promise((resolve) => {
+      const host = this.host;
+      host.replaceChildren();
+      const card = document.createElement('div');
+      card.className = 'mf-dialog';
+      host.appendChild(card);
+      host.classList.remove('hidden');
+      const onKey = (e) => { if (e.key === 'Escape') done(null); };
+      const done = (value) => {
+        document.removeEventListener('keydown', onKey);
+        host.classList.add('hidden');
+        host.replaceChildren();
+        resolve(value);
+      };
+      document.addEventListener('keydown', onKey);
+      build(card, done);
+    });
+  },
+  btn(label, cls, fn) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = label;
+    if (cls) b.className = cls;
+    b.addEventListener('click', fn);
+    return b;
+  },
+  actions(...items) {
+    const row = document.createElement('div');
+    row.className = 'mf-actions';
+    row.append(...items);
+    return row;
+  },
+  text(title, value = '', allowEmpty = false) {
+    return this.open((card, done) => {
+      const h = document.createElement('h3');
+      h.textContent = title;
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = value;
+      input.maxLength = 60;
+      const ok = () => { const v = input.value.trim(); done((v || allowEmpty) ? v : null); };
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') ok(); });
+      card.append(h, input, this.actions(this.btn('Cancelar', '', () => done(null)), this.btn('Aceptar', 'primary', ok)));
+      setTimeout(() => { input.focus(); input.select(); }, 30);
+    });
+  },
+  confirm(message, okLabel = 'Eliminar') {
+    return this.open((card, done) => {
+      const p = document.createElement('p');
+      p.textContent = message;
+      card.append(p, this.actions(this.btn('Cancelar', '', () => done(false)), this.btn(okLabel, 'danger', () => done(true))));
+    });
+  },
+  notify(message) {
+    return this.open((card, done) => {
+      const p = document.createElement('p');
+      p.textContent = message;
+      card.append(p, this.actions(this.btn('Entendido', 'primary', () => done(true))));
+    });
+  },
+  choose(title, options) {
+    return this.open((card, done) => {
+      const h = document.createElement('h3');
+      h.textContent = title;
+      const list = document.createElement('div');
+      list.className = 'mf-choices';
+      options.forEach((label, i) => list.appendChild(this.btn(label, '', () => done(i))));
+      card.append(h, list, this.actions(this.btn('Cancelar', '', () => done(null))));
+    });
+  }
+};
 const icons = { FolderKanban, PanelsTopLeft, Box, CodeXml, Save, Play, Plus, PersonStanding, Crosshair, Lightbulb, FolderOpen, ChevronRight, Trash2, ChevronLeft, Cylinder, Circle, Sun, Image, Move3D, Rotate3D, Scaling, ScanEye, Layers3, Square, X, Eye, MousePointer2, Video, Volume2, Upload, Boxes, Type };
 const viewport = $('viewport');
 const canvas = $('scene-canvas');
 const scene = new THREE.Scene();
 const hudScene = new THREE.Scene();hudScene.add(new THREE.AmbientLight(0xffffff,2));
 const hudCamera = new THREE.OrthographicCamera(-500,500,300,-300,0.1,1000);hudCamera.position.z=500;
-scene.background = new THREE.Color('#121820');
+scene.background = new THREE.Color('#000000');
 const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 500);
 camera.position.set(7, 6, 9);
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
@@ -36,7 +119,7 @@ orbit.enableDamping = true;
 orbit.dampingFactor = 0.08;
 orbit.target.set(0, 0.7, 0);
 const transform = new TransformControls(camera, renderer.domElement);
-transform.setSize(0.9);
+transform.setSize(0.9 * TOUCH_SCALE);
 transform.addEventListener('dragging-changed', (e) => { orbit.enabled = !e.value && !playMode && areaMode==='3d'; });
 transform.addEventListener('objectChange', () => { refreshInspector(); markDirty(); });
 scene.add(transform.getHelper());
@@ -150,8 +233,8 @@ function populateScenes(){const select=$('scene-select');select.replaceChildren(
 function ensureProjectScenes(project){if(!Array.isArray(project.scenes)||!project.scenes.length)project.scenes=[{id:'main',name:'Main'}];const main=project.scenes.find(s=>s.id==='main')||project.scenes[0];main.name='Main';if(!project.scenes.some(s=>s.id==='player'))project.scenes.push({id:'player',name:'Player'});else project.scenes.find(s=>s.id==='player').name='Player';activeSceneId=project.currentSceneId&&project.scenes.some(s=>s.id===project.currentSceneId)?project.currentSceneId:'main';project.currentSceneId=activeSceneId;populateScenes();}
 async function switchScene(id){if(!id||id===activeSceneId)return;saveScene();activeSceneId=id;activeProject.currentSceneId=id;persistProjects();populateScenes();clearObjects();if(!await loadScene())$('save-state').textContent='● Escena nueva';setArea('3d');}
 $('scene-select').addEventListener('change',()=>switchScene($('scene-select').value));
-function createScene(){if(!activeProject)return;const name=prompt('Nombre de la nueva escena:','Escena nueva');if(!name?.trim())return;saveScene();const item={id:`s-${Date.now()}`,name:name.trim()};activeProject.scenes.push(item);activeSceneId=item.id;activeProject.currentSceneId=item.id;persistProjects();populateScenes();clearObjects();saveScene();}
-async function insertSceneIntoCurrent(){if(!activeProject||!activeSceneId)return;saveScene();const choices=(activeProject.scenes||[]).filter(s=>s.id!==activeSceneId);if(!choices.length){alert('Crea otra escena y añade contenido para poder insertarla aquí.');return;}const menu=choices.map((s,i)=>`${i+1}. ${s.name}`).join('\n');const answer=prompt(`Elige una escena para insertar como copia editable:\n${menu}\n\nEscribe su número:`,'1');if(answer===null)return;const index=Number(answer)-1,source=choices[index];if(!source){alert('Número de escena no válido.');return;}const raw=localStorage.getItem(sceneStorageKey(activeProject,source.id));let records;try{records=JSON.parse(raw||'[]');}catch{records=[];}if(!Array.isArray(records)||!records.length){alert(`La escena «${source.name}» no tiene contenido guardado.`);return;}const sourceLabel=source.name;let inserted=0;for(const rec of records){try{let obj;if(rec.assetKey){await restoreAsset(rec);obj=objects[objects.length-1];}else{const baseName=rec.name||'Objeto';let uniqueName=baseName,suffix=2;while(objects.some(o=>o.name===uniqueName))uniqueName=`${baseName} ${suffix++}`;addObject(rec.kind||'Cube',uniqueName);obj=selected;if(!obj)continue;obj.position.fromArray(rec.pos||[0,.65,0]);obj.rotation.set(...(rec.rot||[0,0,0]));obj.scale.fromArray(rec.scale||[1,1,1]);obj.userData.script=rec.script||'';obj.userData.materialId=rec.materialId||null;obj.userData.hudText=rec.hudText||obj.userData.hudText||'';obj.userData.hudImageAssetKey=rec.hudImageAssetKey||null;obj.userData.hudImageName=rec.hudImageName||'';if(obj.material?.color&&rec.color){obj.material.color.set(rec.color);obj.userData.color=rec.color;}if(obj.userData.materialId)assignProjectMaterial(obj,obj.userData.materialId);if(obj.userData.hudText)refreshHudVisual(obj,obj.userData.hudText);if(obj.userData.hudImageAssetKey)await applyHudImageKey(obj,obj.userData.hudImageAssetKey,obj.userData.hudImageName);}if(!obj)continue;const base=rec.name||obj.name;let candidate=`${sourceLabel} · ${base}`,n=2;while(objects.some(o=>o!==obj&&o.name===candidate))candidate=`${sourceLabel} · ${base} ${n++}`;obj.name=candidate;obj.position.x+=isHudObject(obj)?70:3.5;obj.updateMatrixWorld(true);inserted++;}catch(err){console.error('No se pudo insertar objeto de escena',rec,err);}}updateHierarchy();if(inserted){selectObject(objects.at(-1));markDirty();$('status-text').textContent=`● ${inserted} elementos insertados`;alert(`Inserté ${inserted} elemento(s) de «${sourceLabel}» como copias editables en esta escena. Los cambios posteriores en la escena original no modifican esta copia.`);}else alert('No se pudo insertar contenido de esa escena.');}
+async function createScene(){if(!activeProject)return;const name=await ui.text('Nueva escena','Escena nueva');if(!name?.trim())return;saveScene();const item={id:`s-${Date.now()}`,name:name.trim()};activeProject.scenes.push(item);activeSceneId=item.id;activeProject.currentSceneId=item.id;persistProjects();populateScenes();clearObjects();saveScene();}
+async function insertSceneIntoCurrent(){if(!activeProject||!activeSceneId)return;saveScene();const choices=(activeProject.scenes||[]).filter(s=>s.id!==activeSceneId);if(!choices.length){ui.notify('Crea otra escena y añade contenido para poder insertarla aquí.');return;}const index=await ui.choose('Insertar como copia editable',choices.map(s=>s.name));if(index===null)return;const source=choices[index];if(!source){ui.notify('Número de escena no válido.');return;}const raw=localStorage.getItem(sceneStorageKey(activeProject,source.id));let records;try{records=JSON.parse(raw||'[]');}catch{records=[];}if(!Array.isArray(records)||!records.length){ui.notify(`La escena «${source.name}» no tiene contenido guardado.`);return;}const sourceLabel=source.name;let inserted=0;for(const rec of records){try{let obj;if(rec.assetKey){await restoreAsset(rec);obj=objects[objects.length-1];}else{const baseName=rec.name||'Objeto';let uniqueName=baseName,suffix=2;while(objects.some(o=>o.name===uniqueName))uniqueName=`${baseName} ${suffix++}`;addObject(rec.kind||'Cube',uniqueName);obj=selected;if(!obj)continue;obj.position.fromArray(rec.pos||[0,.65,0]);obj.rotation.set(...(rec.rot||[0,0,0]));obj.scale.fromArray(rec.scale||[1,1,1]);obj.userData.script=rec.script||'';obj.userData.materialId=rec.materialId||null;obj.userData.hudText=rec.hudText||obj.userData.hudText||'';obj.userData.hudImageAssetKey=rec.hudImageAssetKey||null;obj.userData.hudImageName=rec.hudImageName||'';if(obj.material?.color&&rec.color){obj.material.color.set(rec.color);obj.userData.color=rec.color;}if(obj.userData.materialId)assignProjectMaterial(obj,obj.userData.materialId);if(obj.userData.hudText)refreshHudVisual(obj,obj.userData.hudText);if(obj.userData.hudImageAssetKey)await applyHudImageKey(obj,obj.userData.hudImageAssetKey,obj.userData.hudImageName);}if(!obj)continue;const base=rec.name||obj.name;let candidate=`${sourceLabel} · ${base}`,n=2;while(objects.some(o=>o!==obj&&o.name===candidate))candidate=`${sourceLabel} · ${base} ${n++}`;obj.name=candidate;obj.position.x+=isHudObject(obj)?70:3.5;obj.updateMatrixWorld(true);inserted++;}catch(err){console.error('No se pudo insertar objeto de escena',rec,err);}}updateHierarchy();if(inserted){selectObject(objects.at(-1));markDirty();$('status-text').textContent=`● ${inserted} elementos insertados`;ui.notify(`Inserté ${inserted} elemento(s) de «${sourceLabel}» como copias editables en esta escena. Los cambios posteriores en la escena original no modifican esta copia.`);}else ui.notify('No se pudo insertar contenido de esa escena.');}
 $('insert-scene-button').addEventListener('click',insertSceneIntoCurrent);
 $('new-scene-top').addEventListener('click',createScene);
 for (const axis of ['px','py','pz','rx','ry','rz','sx','sy','sz']) $(axis).addEventListener('change', () => {
@@ -179,7 +262,7 @@ $('focus-button').addEventListener('click', () => { if (!selected) return; orbit
 const raycaster = new THREE.Raycaster(); const pointer = new THREE.Vector2(); let downPoint = null;function raycasterHits(ndc,cam,items){raycaster.setFromCamera(ndc,cam);return raycaster.intersectObjects(items,true);}
 canvas.addEventListener('pointerdown', (e) => { downPoint = { x:e.clientX, y:e.clientY }; });
 canvas.addEventListener('pointerup', (e) => {
-  if (!downPoint || Math.hypot(e.clientX-downPoint.x, e.clientY-downPoint.y) > 8 || transform.dragging) return;
+  if (!downPoint || Math.hypot(e.clientX-downPoint.x, e.clientY-downPoint.y) > TAP_SLOP || transform.dragging) return;
   const rect = canvas.getBoundingClientRect(); pointer.set((e.clientX-rect.left)/rect.width*2-1, -((e.clientY-rect.top)/rect.height)*2+1);const useHud=areaMode==='2d'||playMode;const hudHits=useHud?raycasterHits(pointer,hudCamera,objects.filter(isHudObject)):[];const hits=hudHits.length?hudHits:(!useHud||playMode?raycasterHits(pointer,camera,objects.filter(o=>!isHudObject(o))):[]);if(!hits.length)return;
   let target = hits[0].object; while (target.parent && !objects.includes(target)) target=target.parent; if(!objects.includes(target))return;
   if(playMode){if(target.userData.kind==='Button2D'&&target.userData.script?.trim())executeLua(target.userData.script,target);return;}selectObject(target);
@@ -190,11 +273,64 @@ $('import-model-top').addEventListener('click',()=>{if(!activeProject){$('status
 $('asset-input').addEventListener('change',()=>{const input=$('asset-input');if(input.files?.length)importFiles(input.files);});
 function safeFilePart(value){return String(value||'archivo').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9._-]+/g,'_').replace(/^\.+|\.+$/g,'').slice(0,70)||'archivo';}
 async function deliverExportZip(blob,filename){const fallback=()=>{const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;a.style.display='none';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);};if(window.cordova?.file?.cacheDirectory&&window.resolveLocalFileSystemURL&&window.plugins?.socialsharing?.shareWithOptions){try{await new Promise((resolve,reject)=>window.resolveLocalFileSystemURL(window.cordova.file.cacheDirectory,dir=>dir.getFile(filename,{create:true},entry=>entry.createWriter(writer=>{writer.onwriteend=()=>window.plugins.socialsharing.shareWithOptions({message:'Paquete de juego MobiForge listo para compilar el APK',files:[entry.nativeURL],chooserTitle:'Guardar paquete del juego'},resolve,reject);writer.onerror=reject;writer.write(blob);},reject),reject),reject));return 'shared';}catch(err){console.warn('No se pudo abrir el menú para guardar; se probará la descarga web.',err);}}fallback();return 'download';}
-async function exportProjectPackage(){if(!activeProject)return;const button=$('export-game-button');button.disabled=true;button.dataset.label=button.innerHTML;button.innerHTML='<span>Exportando…</span>';try{saveScene();const scenes=[];for(const sc of activeProject.scenes||[]){let records=[];try{records=JSON.parse(localStorage.getItem(sceneStorageKey(activeProject,sc.id))||'[]');}catch{}if(!Array.isArray(records))records=[];scenes.push({id:sc.id,name:sc.name,objects:records});}const assetRefs=new Map();for(const sc of scenes)for(const rec of sc.objects){if(rec.assetKey)assetRefs.set(rec.assetKey,rec.assetName||rec.name||'asset.bin');if(rec.hudImageAssetKey)assetRefs.set(rec.hudImageAssetKey,rec.hudImageName||'hud-image.png');}const zip=new JSZip();zip.file('package.json',exportPackage);zip.file('index.html',exportRuntimeHtml);zip.file('src/main.js',exportRuntimeMain);zip.file('src/style.css',exportRuntimeCss);zip.file('.github/workflows/build-android-apk.yml',exportWorkflow);zip.file('README.md',exportReadme);zip.file('vite.config.js',"import { defineConfig } from 'vite';\nexport default defineConfig({base:'./',build:{target:'es2020',outDir:'dist',emptyOutDir:true}});\n");zip.folder('public/assets');const assetPaths={};let assetIndex=0;for(const [key,originalName] of assetRefs){const blob=await getAsset(key);if(!blob)throw new Error(`Falta el recurso local «${originalName}». Reimpórtalo antes de exportar.`);const filename=`asset-${String(++assetIndex).padStart(3,'0')}-${safeFilePart(originalName)}`;const path=`assets/${filename}`;assetPaths[key]=path;zip.file(`public/${path}`,blob);}const game={format:'mobiforge-game-v1',name:activeProject.name||'Mi juego',template:activeProject.template||'blank',startSceneId:'main',playerSceneId:'player',materials:projectMaterials().map(m=>({...m})),scenes,assets:assetPaths};zip.file('game.json',JSON.stringify(game,null,2));const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:5}});const filename=`${safeFilePart(activeProject.name||'Mi-juego')}-proyecto-APK.zip`;const delivery=await deliverExportZip(blob,filename);$('status-text').textContent='● PROYECTO PARA APK LISTO';alert(`Exporté «${activeProject.name||'Mi juego'}» con ${scenes.length} escenas y ${assetRefs.size} recursos.${delivery==='shared'?' Se abrió el menú para guardar o compartir el ZIP.':''}\n\nDescomprime el ZIP y sube todos sus archivos y carpetas —incluida .github/workflows— a un repositorio nuevo de GitHub. Al confirmar la carga, GitHub Actions compilará la APK del juego automáticamente; después descarga el artefacto Juego-Android-APK desde Actions. La primera exportación todavía requiere esa carga inicial al repositorio.`);}catch(err){console.error('Exportación del juego fallida',err);$('status-text').textContent='● ERROR AL EXPORTAR';alert(`No pude preparar el proyecto: ${err.message||err}`);}finally{button.disabled=false;button.innerHTML=button.dataset.label||'<i data-lucide="box"></i><span>Exportar APK</span>';createIcons({icons});}}
+async function exportProjectPackage(){
+  if(!activeProject)return;
+  const button=$('export-game-button');
+  button.disabled=true;
+  button.dataset.label=button.innerHTML;
+  button.innerHTML='<span>Exportando…</span>';
+  try{
+    saveScene();
+    const scenes=[];
+    for(const sc of activeProject.scenes||[]){
+      let records=[];
+      try{records=JSON.parse(localStorage.getItem(sceneStorageKey(activeProject,sc.id))||'[]');}catch{}
+      scenes.push({id:sc.id,name:sc.name,objects:Array.isArray(records)?records:[]});
+    }
+    const assetRefs=new Map();
+    for(const sc of scenes)for(const rec of sc.objects){
+      if(rec.assetKey)assetRefs.set(rec.assetKey,rec.assetName||rec.name||'asset.bin');
+      if(rec.hudImageAssetKey)assetRefs.set(rec.hudImageAssetKey,rec.hudImageName||'hud-image.png');
+    }
+    const zip=new JSZip();
+    zip.file('package.json',exportPackage);
+    zip.file('index.html',exportRuntimeHtml);
+    zip.file('src/main.js',exportRuntimeMain);
+    zip.file('src/style.css',exportRuntimeCss);
+    zip.file('.github/workflows/build-android-apk.yml',exportWorkflow);
+    zip.file('README.md',exportReadme);
+    zip.file('vite.config.js',"import { defineConfig } from 'vite';\nexport default defineConfig({base:'./',build:{target:'es2020',outDir:'dist',emptyOutDir:true}});\n");
+    const assetPaths={};
+    let assetIndex=0;
+    for(const [key,originalName] of assetRefs){
+      const blob=await getAsset(key);
+      if(!blob)throw new Error(`Falta el recurso local «${originalName}». Reimpórtalo antes de exportar.`);
+      const filename=`asset-${String(++assetIndex).padStart(3,'0')}-${safeFilePart(originalName)}`;
+      const path=`assets/${filename}`;
+      assetPaths[key]=path;
+      zip.file(`public/${path}`,blob);
+    }
+    const game={format:'mobiforge-game-v1',name:activeProject.name||'Mi juego',template:activeProject.template||'blank',startSceneId:'main',playerSceneId:'player',materials:projectMaterials().map(m=>({...m})),scenes,assets:assetPaths};
+    zip.file('game.json',JSON.stringify(game,null,2));
+    const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:5}});
+    const filename=`${safeFilePart(activeProject.name||'Mi-juego')}-proyecto-APK.zip`;
+    const delivery=await deliverExportZip(blob,filename);
+    $('status-text').textContent='● PROYECTO PARA APK LISTO';
+    await ui.notify(`Exporté «${activeProject.name||'Mi juego'}» con ${scenes.length} escenas y ${assetRefs.size} recursos.${delivery==='shared'?' Se abrió el menú para guardar o compartir el ZIP.':''}\n\nDescomprime el ZIP y sube todos sus archivos y carpetas —incluida .github/workflows— a un repositorio privado o nuevo de GitHub. El workflow está ya puesto en la ruta correcta y compilará la APK del juego al hacer push. Después descarga Juego-Android-APK desde Actions. No subas el ZIP como un solo archivo.`);
+  }catch(err){
+    console.error('Exportación del juego fallida',err);
+    $('status-text').textContent='● ERROR AL EXPORTAR';
+    await ui.notify(`No pude exportar el proyecto: ${err.message||err}`);
+  }finally{
+    button.disabled=false;
+    button.innerHTML=button.dataset.label||'<i data-lucide="box"></i><span>Exportar APK</span>';
+    createIcons({icons});
+  }
+}
 $('export-game-button').addEventListener('click',exportProjectPackage);
 function resize(){const w=Math.max(1,viewport.clientWidth),h=Math.max(1,viewport.clientHeight);renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();const aspect=w/h;hudCamera.left=-w/2;hudCamera.right=w/2;hudCamera.top=h/2;hudCamera.bottom=-h/2;hudCamera.updateProjectionMatrix();}
 new ResizeObserver(resize).observe(viewport); window.addEventListener('orientationchange', () => setTimeout(resize,150));
-function animate(){requestAnimationFrame(animate);if(playMode)updatePlay(1/60);else if(areaMode==='3d')orbit.update();renderer.autoClear=true;if(areaMode==='2d'){renderer.setClearColor('#000000',1);renderer.clear();renderer.render(hudScene,hudCamera);}else{renderer.render(scene,camera);renderer.autoClear=false;renderer.clearDepth();renderer.render(hudScene,hudCamera);renderer.autoClear=true;}}
+function animate(){requestAnimationFrame(animate);if(playMode)updatePlay(1/60);else if(areaMode==='3d')orbit.update();renderer.autoClear=true;if(areaMode==='2d'&&!playMode){renderer.setClearColor('#000000',1);renderer.clear();renderer.render(hudScene,hudCamera);}else{renderer.render(scene,camera);renderer.autoClear=false;renderer.clearDepth();renderer.render(hudScene,hudCamera);renderer.autoClear=true;}}
 resize(); animate();
 
 // Fengari runs Lua 5.3 in a browser VM. Only the small engine API is exposed to scripts.
@@ -242,7 +378,7 @@ function renderProjects() {
     const open=document.createElement('button'); open.className='recent-open'; open.innerHTML=`<span class="recent-icon"><i data-lucide="${icon}"></i></span><span class="recent-copy"><b></b><small></small></span><i class="recent-arrow" data-lucide="chevron-right"></i>`;
     open.querySelector('b').textContent=project.name; open.querySelector('small').textContent=`${project.template==='first'?'Primera persona':project.template==='third'?'Tercera persona':'Proyecto 3D'} · ${project.updated?new Date(project.updated).toLocaleDateString('es-MX'):'Nuevo'}`;
     open.addEventListener('click',()=>openProject(project));
-    const remove=document.createElement('button'); remove.className='recent-delete'; remove.title='Eliminar proyecto'; remove.innerHTML='<i data-lucide="trash-2"></i>'; remove.addEventListener('click',(e)=>{e.stopPropagation();if(!confirm(`¿Eliminar “${project.name}” de este dispositivo?`))return;for(const sc of project.scenes||[])localStorage.removeItem(sceneStorageKey(project,sc.id));localStorage.removeItem(`mobiforge-scene:${project.id}`);deleteProjectAssets(project.id);const i=savedProjects.findIndex(x=>x.id===project.id);if(i>=0)savedProjects.splice(i,1);if(activeProject?.id===project.id){clearTimeout(autoSaveTimer);activeProject=null;activeSceneId=null;showProjects();}persistProjects();});
+    const remove=document.createElement('button'); remove.className='recent-delete'; remove.title='Eliminar proyecto'; remove.innerHTML='<i data-lucide="trash-2"></i>'; remove.addEventListener('click',async(e)=>{e.stopPropagation();if(!await ui.confirm(`¿Eliminar “${project.name}” de este dispositivo?`))return;for(const sc of project.scenes||[])localStorage.removeItem(sceneStorageKey(project,sc.id));localStorage.removeItem(`mobiforge-scene:${project.id}`);deleteProjectAssets(project.id);const i=savedProjects.findIndex(x=>x.id===project.id);if(i>=0)savedProjects.splice(i,1);if(activeProject?.id===project.id){clearTimeout(autoSaveTimer);activeProject=null;activeSceneId=null;showProjects();}persistProjects();});
     card.append(open,remove);host.appendChild(card);
   }
   createIcons({icons});
@@ -282,14 +418,14 @@ function seedTemplate(template) {
   if(objects.length)selectObject(objects[0]);
 }
 $('back-projects').addEventListener('click',showProjects);
-$('new-project-button').addEventListener('click',()=>{const name=prompt('Nombre del proyecto (opcional):','');createProject('blank',name||'');});
+$('new-project-button').addEventListener('click',async()=>{const name=await ui.text('Nombre del proyecto (opcional)','',true);if(name===null)return;createProject('blank',name||'');});
 document.querySelectorAll('.project-card').forEach(card=>card.addEventListener('click',()=>{const type=card.dataset.template;const names={blank:'Mi proyecto',third:'Aventura tercera persona',first:'Exploración primera persona'};createProject(type,names[type]);}));
 
 function setArea(mode){
   if(mode==='script'){syncSelectedScript();toggleLua(true);document.querySelectorAll('.workspace-tab').forEach(b=>b.classList.toggle('selected',b.dataset.area==='script'));return;}
   if(playMode)togglePlay(false);toggleLua(false);areaMode=mode;const is2d=mode==='2d';$('editor-layout').classList.toggle('hud-layout',is2d);
   const helper=transform.getHelper();if(transformHost!==(is2d?hudScene:scene)){transform.detach();transformHost.remove(helper);transformHost=is2d?hudScene:scene;transformHost.add(helper);}
-  transform.camera=is2d?hudCamera:camera;transform.enabled=!playMode;transform.showX=true;transform.showY=true;transform.showZ=!is2d;transform.setSize(is2d?1.15:.9);
+  transform.camera=is2d?hudCamera:camera;transform.enabled=!playMode;transform.showX=true;transform.showY=true;transform.showZ=!is2d;transform.setSize((is2d?1.15:.9) * TOUCH_SCALE);
   floor.visible=!is2d;grid.visible=!is2d;axes.visible=!is2d;
   if(is2d){camera.position.set(0,0,20);camera.lookAt(0,0,0);orbit.enabled=false;}
   if(selected&&isHudObject(selected)!==is2d){const candidate=objects.find(o=>isHudObject(o)===is2d);if(candidate)selectObject(candidate);else{selected=null;transform.detach();refreshInspector();updateHierarchy();}}
@@ -315,7 +451,7 @@ $('close-node-picker').addEventListener('click',()=>$('node-picker').classList.a
 document.querySelectorAll('.node-picker-tab').forEach(tab=>tab.addEventListener('click',()=>{document.querySelectorAll('.node-picker-tab').forEach(t=>t.classList.toggle('active',t===tab));renderNodePicker(tab.dataset.nodeGroup);}));
 function syncAllMaterialValues(id){for(const o of objects)if(o.userData.materialId===id)syncMaterialValues(o,id);}
 $('material-select').addEventListener('change',()=>{if(!selected)return;const id=$('material-select').value||null;if(id)assignProjectMaterial(selected,id);else{selected.userData.materialId=null;const c=selected.userData.color||defaultColor;eachMesh(selected,m=>{const prior=m.material;const make=old=>new THREE.MeshStandardMaterial({color:c,roughness:.5,metalness:.1,map:old?.map||null,transparent:!!old?.map,side:THREE.DoubleSide});m.material=Array.isArray(prior)?prior.map(make):make(prior);});}refreshInspector();markDirty();});
-$('new-material').addEventListener('click',()=>{if(!selected)return;const name=prompt('Nombre del material:','Material nuevo');if(!name?.trim())return;const m={id:`mat-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,name:name.trim(),color:selected.userData.color||'#44d7a0',roughness:.5,metalness:.1};projectMaterials().push(m);assignProjectMaterial(selected,m.id);persistProjects();refreshInspector();markDirty();});
+$('new-material').addEventListener('click',async()=>{if(!selected)return;const name=await ui.text('Nombre del material','Material nuevo');if(!name?.trim())return;const m={id:`mat-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,name:name.trim(),color:selected.userData.color||'#44d7a0',roughness:.5,metalness:.1};projectMaterials().push(m);assignProjectMaterial(selected,m.id);persistProjects();refreshInspector();markDirty();});
 async function applyHudImageKey(obj,key,name=''){const blob=await getAsset(key);if(!blob)return;const url=URL.createObjectURL(blob);try{const tex=await new Promise((resolve,reject)=>new THREE.TextureLoader().load(url,resolve,undefined,reject));tex.colorSpace=THREE.SRGBColorSpace;obj.material.map=tex;obj.material.color.set('#ffffff');obj.material.needsUpdate=true;obj.userData.hudImageAssetKey=key;obj.userData.hudImageName=name||'Imagen';if($('hud-image-name')&&obj===selected)$('hud-image-name').textContent=obj.userData.hudImageName;}finally{URL.revokeObjectURL(url);}}
 $('hud-image-button').addEventListener('click',()=>selected&&$('hud-image-input').click());
 $('hud-image-input').addEventListener('change',async()=>{if(!selected||!$('hud-image-input').files?.length)return;const file=$('hud-image-input').files[0],key=`${activeProject.id}:${activeSceneId}:hud-${Date.now()}`;try{await putAsset(key,file);await applyHudImageKey(selected,key,file.name);markDirty();}catch(err){$('status-text').textContent=`● ERROR IMAGEN HUD: ${String(err.message||err).slice(0,55)}`;}$('hud-image-input').value='';});
@@ -329,14 +465,14 @@ function setupPanelResizers(){const layout=$('editor-layout');const saved=JSON.p
 setupPanelResizers();
 function collectColors(obj){const a=[];obj.traverse(n=>{const ms=Array.isArray(n.material)?n.material:[n.material];for(const m of ms)if(m?.color)a.push([m,m.color.clone()]);});return a;}
 function togglePlay(on=!playMode) {
-  if(on&&!playMode)playSnapshot={objects:new Map(objects.map(o=>[o,{position:o.position.clone(),rotation:o.rotation.clone(),scale:o.scale.clone(),visible:o.visible,script:o.userData.script,color:o.userData.color,materials:collectColors(o)}])),camera:camera.position.clone(),cameraRotation:camera.rotation.clone(),target:orbit.target.clone(),selected,editorVisibility:{floor:floor.visible,grid:grid.visible,axes:axes.visible}};
+  if(on&&!playMode)playSnapshot={objects:new Map(objects.map(o=>[o,{position:o.position.clone(),rotation:o.rotation.clone(),scale:o.scale.clone(),visible:o.visible,script:o.userData.script,color:o.userData.color,materials:collectColors(o)}])),camera:camera.position.clone(),cameraRotation:camera.rotation.clone(),target:orbit.target.clone(),selected,editorVisibility:{floor:floor.visible,grid:grid.visible,axes:axes.visible},background:scene.background?.clone?.()||scene.background};
   playMode=on;const kind='CharacterBody3D';$('editor-layout').classList.toggle('playing',playMode);document.querySelector('.topbar').classList.toggle('play-view',playMode);
-  playCharacter=areaMode==='2d'?null:(objects.find(o=>o.userData.kind===kind)||objects.find(o=>o.userData.kind==='CharacterBody3D')||null);
-  $('play-controls').classList.toggle('hidden',!playMode);$('editor-layout').classList.toggle('hud-play',playMode&&areaMode==='2d');$('play-button').classList.toggle('playing',playMode);
+  playCharacter=objects.find(o=>o.userData.kind===kind)||objects.find(o=>o.userData.kind==='CharacterBody3D')||null;
+  $('play-controls').classList.toggle('hidden',!playMode);$('editor-layout').classList.toggle('hud-play',false);$('play-button').classList.toggle('playing',playMode);
   $('play-button').innerHTML=playMode?'<i data-lucide="square"></i><span>Detener</span>':'<i data-lucide="play"></i><span>Probar</span>';
-  transform.enabled=!playMode;transform.getHelper().visible=!playMode;orbit.enabled=!playMode&&areaMode==='3d';if(playMode){floor.visible=true;grid.visible=false;axes.visible=false;playYaw=playCharacter?.rotation.y||0;playPitch=0;if(playCharacter){const spawn=playCharacter.position;orbit.target.set(spawn.x,spawn.y+1,spawn.z);if(activeProject?.template==='first'){camera.position.set(spawn.x,spawn.y+1.1,spawn.z);camera.rotation.order='YXZ';camera.rotation.set(0,playYaw,0);}else{camera.position.set(spawn.x-Math.sin(playYaw)*4,spawn.y+2.5,spawn.z+Math.cos(playYaw)*4);camera.lookAt(spawn.x,spawn.y+1,spawn.z);}}resize();}
-  if(playMode){if(activeSceneId==='main'&&activeProject){const playerRec=JSON.parse(localStorage.getItem(sceneStorageKey(activeProject,'player'))||'[]').find(x=>x.kind==='CharacterBody3D');if(playerRec){const n=addObject('CharacterBody3D',playerRec.name||'Player');playCharacter=n;n.position.fromArray(playerRec.pos||[0,.95,0]);n.rotation.set(...(playerRec.rot||[0,0,0]));n.scale.fromArray(playerRec.scale||[1,1,1]);n.userData.color=playerRec.color||'#48d6a5';}}if(playCharacter&&activeProject?.template==='first')playCharacter.visible=false;$('status-text').textContent=areaMode==='2d'?'● EJECUTANDO HUD':'● MODO JUEGO';for(const o of [...objects])if(o.userData.script?.trim()&&o.userData.kind!=='Button2D')executeLua(o.userData.script,o);}
-  else{$('status-text').textContent='● LISTO';transform.getHelper().visible=true;if(playSnapshot){for(const o of [...objects])if(!playSnapshot.objects.has(o))removeObject(o,true);for(const [o,v] of playSnapshot.objects){if(!objects.includes(o))continue;o.position.copy(v.position);o.rotation.copy(v.rotation);o.scale.copy(v.scale);o.visible=v.visible;o.userData.script=v.script;o.userData.color=v.color;for(const [m,c] of v.materials)m.color.copy(c);}camera.position.copy(playSnapshot.camera);camera.rotation.copy(playSnapshot.cameraRotation);orbit.target.copy(playSnapshot.target);floor.visible=playSnapshot.editorVisibility.floor;grid.visible=playSnapshot.editorVisibility.grid;axes.visible=playSnapshot.editorVisibility.axes;selected=playSnapshot.selected;playSnapshot=null;}playCharacter=null;joystick.x=0;joystick.y=0;pressedKeys.clear();if(selected){transform.attach(selected);refreshInspector();updateHierarchy();}orbit.enabled=areaMode==='3d';}
+  transform.enabled=!playMode;transform.getHelper().visible=!playMode;orbit.enabled=!playMode&&areaMode==='3d';if(playMode){floor.visible=true;grid.visible=false;axes.visible=false;scene.background=new THREE.Color('#18212b');playYaw=playCharacter?.rotation.y||0;playPitch=0;resize();}
+  if(playMode){if(activeSceneId==='main'&&activeProject){const playerRec=JSON.parse(localStorage.getItem(sceneStorageKey(activeProject,'player'))||'[]').find(x=>x.kind==='CharacterBody3D');if(playerRec){const n=addObject('CharacterBody3D',playerRec.name||'Player');playCharacter=n;n.position.fromArray(playerRec.pos||[0,.95,0]);n.rotation.set(...(playerRec.rot||[0,0,0]));n.scale.fromArray(playerRec.scale||[1,1,1]);n.userData.color=playerRec.color||'#48d6a5';}}if(playCharacter){const spawn=playCharacter.position;orbit.target.set(spawn.x,spawn.y+1,spawn.z);if(activeProject?.template==='first'){camera.position.set(spawn.x,spawn.y+1.1,spawn.z);camera.rotation.order='YXZ';camera.rotation.set(0,playYaw,0);}else{camera.position.set(spawn.x-Math.sin(playYaw)*4,spawn.y+2.5,spawn.z+Math.cos(playYaw)*4);camera.lookAt(spawn.x,spawn.y+1,spawn.z);}}if(playCharacter&&activeProject?.template==='first')playCharacter.visible=false;$('status-text').textContent=areaMode==='2d'?'● EJECUTANDO HUD':'● MODO JUEGO';for(const o of [...objects])if(o.userData.script?.trim()&&o.userData.kind!=='Button2D')executeLua(o.userData.script,o);}
+  else{$('status-text').textContent='● LISTO';transform.getHelper().visible=true;if(playSnapshot){for(const o of [...objects])if(!playSnapshot.objects.has(o))removeObject(o,true);for(const [o,v] of playSnapshot.objects){if(!objects.includes(o))continue;o.position.copy(v.position);o.rotation.copy(v.rotation);o.scale.copy(v.scale);o.visible=v.visible;o.userData.script=v.script;o.userData.color=v.color;for(const [m,c] of v.materials)m.color.copy(c);}camera.position.copy(playSnapshot.camera);camera.rotation.copy(playSnapshot.cameraRotation);orbit.target.copy(playSnapshot.target);floor.visible=playSnapshot.editorVisibility.floor;grid.visible=playSnapshot.editorVisibility.grid;axes.visible=playSnapshot.editorVisibility.axes;if(playSnapshot.background)scene.background=playSnapshot.background.clone?.()||playSnapshot.background;selected=playSnapshot.selected;playSnapshot=null;}playCharacter=null;joystick.x=0;joystick.y=0;pressedKeys.clear();if(selected){transform.attach(selected);refreshInspector();updateHierarchy();}orbit.enabled=areaMode==='3d';}
   createIcons({icons});
 }
 function updatePlay(dt) {

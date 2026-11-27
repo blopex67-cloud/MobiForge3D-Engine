@@ -1,4 +1,4 @@
-# MobiForge 3D
+# MobiForge 3D — 1.3.0
 
 Editor móvil horizontal con interfaz HTML/Three.js empaquetado con Cordova.
 
