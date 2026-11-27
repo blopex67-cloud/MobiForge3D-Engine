@@ -50,8 +50,7 @@ jobs:
           from pathlib import Path
           p = Path("export_presets.cfg")
           s = p.read_text()
-          s = s.replace('package/keystore/debug=""', f'package/keystore/debug="{Path.home()}/.android/debug.keystore"')
-          s = s.replace('package/signed=false', 'package/signed=true')
+          s = s.replace('keystore/debug=""', f'keystore/debug="{Path.home()}/.android/debug.keystore"')
           p.write_text(s)
           PY
 
