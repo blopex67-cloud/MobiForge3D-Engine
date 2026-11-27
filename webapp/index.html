@@ -4,32 +4,30 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#10151d" />
-  <title>MobiForge 3D</title>
+  <title>Editor</title>
 </head>
 <body>
   <div id="app">
-    <header class="topbar">
-      <button class="brand home-button" id="home-button" title="Proyectos"><span class="brand-mark">◆</span><span>MOBIFORGE <small>3D</small></span></button>
+    <header class="topbar projects-view">
       <nav class="workspace-tabs" aria-label="Áreas del editor">
         <button class="workspace-tab selected" data-area="projects"><i data-lucide="folder-kanban"></i><span>Proyectos</span></button>
         <button class="workspace-tab" data-area="2d"><i data-lucide="panels-top-left"></i><span>2D</span></button>
         <button class="workspace-tab" data-area="3d"><i data-lucide="box"></i><span>3D</span></button>
         <button class="workspace-tab" data-area="script"><i data-lucide="code-xml"></i><span>Script</span></button>
       </nav>
-      <div class="project-title"><b id="project-name-top">Elige un proyecto</b><span id="save-state">● Guardado local</span></div>
-      <div class="top-actions"><button id="save-button" class="button subdued"><i data-lucide="save"></i><span>Guardar</span></button><button id="play-button" class="button play"><i data-lucide="play"></i><span>Probar</span></button></div>
+      <span id="project-name-top" hidden></span><span id="save-state" hidden></span>
+      <div class="top-actions"><button id="import-model-top" class="icon-button" title="Importar modelo o imagen" aria-label="Importar modelo o imagen"><i data-lucide="upload"></i></button><input id="asset-input" type="file" accept=".glb,.gltf,.fbx,.obj,.png,.jpg,.jpeg,.webp" multiple hidden><button id="save-button" class="icon-button" title="Guardar" aria-label="Guardar"><i data-lucide="save"></i></button><button id="play-button" class="button play"><i data-lucide="play"></i><span>Probar</span></button></div>
     </header>
     <section id="project-home" class="project-home">
       <div class="home-wrap">
-        <div class="welcome-row"><div><div class="eyebrow accent-text">CREA DESDE TU TELÉFONO</div><h1>Mis proyectos</h1><p>Empieza con una plantilla y construye tu juego paso a paso.</p></div><button id="new-project-button" class="button create-project"><i data-lucide="plus"></i><span>Nuevo proyecto</span></button></div>
+        <div class="welcome-row"><div><h1>Proyectos</h1></div><button id="new-project-button" class="button create-project"><i data-lucide="plus"></i><span>Nuevo</span></button></div>
         <div class="home-grid">
           <button class="project-card new-card" data-template="blank"><span class="card-art art-blank"><i data-lucide="plus"></i></span><span class="card-meta"><b>Proyecto vacío</b><small>Empieza desde cero</small></span></button>
           <button class="project-card" data-template="third"><span class="card-art art-third"><i data-lucide="person-standing"></i><em>3D</em></span><span class="card-meta"><b>Aventura en tercera persona</b><small>Personaje, escenario y controles</small></span><span class="template-pill">PRINCIPIANTE</span></button>
           <button class="project-card" data-template="first"><span class="card-art art-first"><i data-lucide="crosshair"></i><em>FPS</em></span><span class="card-meta"><b>Exploración primera persona</b><small>Cámara y escena inicial</small></span><span class="template-pill">PRINCIPIANTE</span></button>
         </div>
-        <div class="projects-heading"><div><h2>Recientes</h2><span>Se guardan en este dispositivo</span></div><span id="projects-count" class="count">0 proyectos</span></div>
+        <div class="projects-heading"><div><h2>Recientes</h2></div><span id="projects-count" class="count">0 proyectos</span></div>
         <div id="recent-projects" class="recent-projects"></div>
-        <div class="home-tip"><i data-lucide="lightbulb"></i><span><b>Consejo para empezar</b> Abre una plantilla para ver un personaje y una escena de ejemplo. Usa los botones superiores para cambiar entre 2D, 3D y Script.</span></div>
       </div>
     </section>
     <main id="editor-layout" class="layout hidden">
@@ -42,8 +40,7 @@
         <div class="panel-heading"><span>JERARQUÍA</span><span id="object-count" class="count">0</span></div>
         <div id="hierarchy" class="hierarchy"></div>
         <div class="left-bottom"><div class="divider"></div><div class="eyebrow">ARCHIVOS</div>
-          <label class="wide-button import-button"><i data-lucide="upload"></i><span>Importar GLB / imagen</span><input id="asset-input" type="file" accept=".glb,.png,.jpg,.jpeg,.webp" multiple hidden></label>
-          <small class="import-note">GLB con recursos incluidos · imágenes PNG/JPG/WebP</small>
+          <span class="import-note">Archivos del proyecto</span>
         </div>
       </aside>
       <div class="panel-resizer" id="resize-left" role="separator" aria-label="Cambiar ancho del panel de escena"></div>
@@ -73,7 +70,7 @@
         <label class="field-label" for="material-color">Color base</label><div class="color-row"><input id="material-color" type="color" value="#44d7a0" disabled/><span id="color-value">#44D7A0</span></div>
         <label class="field-label" for="material-roughness">Rugosidad</label><div class="range-row"><input id="material-roughness" type="range" min="0" max="1" step="0.01" value="0.5" disabled/><span id="roughness-value">0.50</span></div>
         <label class="field-label" for="material-metalness">Metallicidad</label><div class="range-row"><input id="material-metalness" type="range" min="0" max="1" step="0.01" value="0.1" disabled/><span id="metalness-value">0.10</span></div>
-        <div id="hud-properties" class="hud-properties hidden"><div class="divider"></div><div class="section-title">CONTENIDO HUD</div><label class="field-label" for="hud-text">Texto visible</label><input id="hud-text" class="text-field" value="" placeholder="Escribe el texto" /></div>
+        <div id="hud-properties" class="hud-properties hidden"><div class="divider"></div><div class="section-title">HUD</div><label class="field-label" for="hud-text">Texto</label><input id="hud-text" class="text-field" value="" placeholder="Texto del botón" /><div class="hud-image-row"><button id="hud-image-button" class="button subdued small"><i data-lucide="image"></i><span>Imagen de fondo</span></button><input id="hud-image-input" type="file" accept="image/png,image/jpeg,image/webp" hidden><button id="hud-image-clear" class="icon-button" title="Quitar imagen"><i data-lucide="x"></i></button></div><small id="hud-image-name" class="hud-image-name">Sin imagen</small></div>
         <div class="divider"></div><div class="section-title">SCRIPT DEL NODO</div><button id="edit-node-script" class="button subdued small script-open-button"><i data-lucide="code-xml"></i><span>Abrir script del nodo</span></button><div class="inspector-foot">Cada nodo conserva su código. Se edita en la pestaña superior Script.</div>
       </aside>
     </main>
