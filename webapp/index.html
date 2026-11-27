@@ -9,53 +9,65 @@
 <body>
   <div id="app">
     <header class="topbar">
-      <div class="brand"><span class="brand-mark">◆</span><span>MOBIFORGE <small>3D</small></span></div>
-      <div class="project-title"><b>MI PRIMER JUEGO</b><span id="save-state">● Guardado local</span></div>
-      <div class="top-actions"><button id="save-button" class="button subdued">Guardar</button><button id="play-button" class="button play">▶ Probar</button></div>
+      <button class="brand home-button" id="home-button" title="Proyectos"><span class="brand-mark">◆</span><span>MOBIFORGE <small>3D</small></span></button>
+      <nav class="workspace-tabs" aria-label="Áreas del editor">
+        <button class="workspace-tab selected" data-area="projects"><i data-lucide="folder-kanban"></i><span>Proyectos</span></button>
+        <button class="workspace-tab" data-area="2d"><i data-lucide="panels-top-left"></i><span>2D</span></button>
+        <button class="workspace-tab" data-area="3d"><i data-lucide="box"></i><span>3D</span></button>
+        <button class="workspace-tab" data-area="script"><i data-lucide="code-xml"></i><span>Script</span></button>
+      </nav>
+      <div class="project-title"><b id="project-name-top">Elige un proyecto</b><span id="save-state">● Guardado local</span></div>
+      <div class="top-actions"><button id="save-button" class="button subdued"><i data-lucide="save"></i><span>Guardar</span></button><button id="play-button" class="button play"><i data-lucide="play"></i><span>Probar</span></button></div>
     </header>
-    <main class="layout">
+    <section id="project-home" class="project-home">
+      <div class="home-wrap">
+        <div class="welcome-row"><div><div class="eyebrow accent-text">CREA DESDE TU TELÉFONO</div><h1>Mis proyectos</h1><p>Empieza con una plantilla y construye tu juego paso a paso.</p></div><button id="new-project-button" class="button create-project"><i data-lucide="plus"></i><span>Nuevo proyecto</span></button></div>
+        <div class="home-grid">
+          <button class="project-card new-card" data-template="blank"><span class="card-art art-blank"><i data-lucide="plus"></i></span><span class="card-meta"><b>Proyecto vacío</b><small>Empieza desde cero</small></span></button>
+          <button class="project-card" data-template="third"><span class="card-art art-third"><i data-lucide="person-standing"></i><em>3D</em></span><span class="card-meta"><b>Aventura en tercera persona</b><small>Personaje, escenario y controles</small></span><span class="template-pill">PRINCIPIANTE</span></button>
+          <button class="project-card" data-template="first"><span class="card-art art-first"><i data-lucide="crosshair"></i><em>FPS</em></span><span class="card-meta"><b>Exploración primera persona</b><small>Cámara y escena inicial</small></span><span class="template-pill">PRINCIPIANTE</span></button>
+        </div>
+        <div class="projects-heading"><div><h2>Recientes</h2><span>Se guardan en este dispositivo</span></div><span id="projects-count" class="count">0 proyectos</span></div>
+        <div id="recent-projects" class="recent-projects"></div>
+        <div class="home-tip"><i data-lucide="lightbulb"></i><span><b>Consejo para empezar</b> Abre una plantilla para ver un personaje y una escena de ejemplo. Usa los botones superiores para cambiar entre 2D, 3D y Script.</span></div>
+      </div>
+    </section>
+    <main id="editor-layout" class="layout hidden">
       <aside class="panel left-panel">
-        <div class="panel-heading"><span>ESCENA</span><button id="add-menu" class="icon-button" aria-label="Añadir objeto">＋</button></div>
-        <div class="scene-name">▾ &nbsp; Nivel principal</div>
+        <div class="panel-heading"><span>ESCENA</span><button id="add-menu" class="icon-button" aria-label="Añadir objeto"><i data-lucide="plus"></i></button></div>
+        <button id="back-projects" class="scene-name"><i data-lucide="chevron-left"></i><span>Todos los proyectos</span></button>
         <div class="divider"></div>
         <div class="panel-heading"><span>JERARQUÍA</span><span id="object-count" class="count">0</span></div>
         <div id="hierarchy" class="hierarchy"></div>
-        <div class="left-bottom">
-          <div class="divider"></div><div class="eyebrow">CREAR</div>
-          <button class="wide-button" data-add="Cube">＋ Cubo</button>
-          <button class="wide-button" data-add="Sphere">＋ Esfera</button>
-          <button class="wide-button" data-add="Cylinder">＋ Cilindro</button>
-          <button class="wide-button" data-add="Light">＋ Luz</button>
+        <div class="left-bottom"><div class="divider"></div><div class="eyebrow">AÑADIR A LA ESCENA</div>
+          <button class="wide-button" data-add="Cube"><i data-lucide="box"></i><span>Cubo</span></button>
+          <button class="wide-button" data-add="Sphere"><i data-lucide="circle"></i><span>Esfera</span></button>
+          <button class="wide-button" data-add="Cylinder"><i data-lucide="cylinder"></i><span>Cilindro</span></button>
+          <button class="wide-button" data-add="Light"><i data-lucide="sun"></i><span>Luz</span></button>
+          <button class="wide-button" data-add="Sprite"><i data-lucide="image"></i><span>Sprite 2D</span></button>
         </div>
       </aside>
       <section class="center-panel">
         <nav class="toolbar">
-          <button class="tool active" data-mode="translate" title="Mover">↔ <span>Mover</span></button>
-          <button class="tool" data-mode="rotate" title="Rotar">⟳ <span>Rotar</span></button>
-          <button class="tool" data-mode="scale" title="Escalar">⤢ <span>Escalar</span></button>
-          <span class="toolbar-divider"></span>
-          <button id="focus-button" class="tool icon-only" title="Enfocar selección">◎</button>
-          <div class="toolbar-spacer"></div><span class="hint">Arrastra la vista para orbitar</span>
+          <button class="tool active" data-mode="translate" title="Mover"><i data-lucide="move-3d"></i><span>Mover</span></button>
+          <button class="tool" data-mode="rotate" title="Rotar"><i data-lucide="rotate-3d"></i><span>Rotar</span></button>
+          <button class="tool" data-mode="scale" title="Escalar"><i data-lucide="scaling"></i><span>Escalar</span></button>
+          <span class="toolbar-divider"></span><button id="focus-button" class="tool icon-only" title="Enfocar selección"><i data-lucide="scan-eye"></i></button>
+          <div class="toolbar-spacer"></div><span class="hint" id="viewport-hint">Arrastra para orbitar · toca un objeto para elegirlo</span>
         </nav>
-        <div id="viewport" class="viewport"><canvas id="scene-canvas"></canvas><div class="viewport-badge">VISTA 3D <span>•</span> TOUCH</div><div id="empty-hint" class="empty-hint">Toca un objeto o crea uno nuevo</div></div>
-        <div class="bottom-dock"><button class="dock-tab selected" data-tab="scene">Escena</button><button class="dock-tab" data-tab="lua">Script Lua</button><span class="dock-spacer"></span><span id="status-text" class="status-dot">● LISTO</span></div>
-        <section id="lua-panel" class="lua-panel hidden">
-          <div class="lua-head"><div><b>Script Lua</b><span>Lua 5.3 · ejecutar en el editor</span></div><div class="lua-actions"><button id="lua-example" class="button subdued small">Ejemplo</button><button id="lua-run" class="button run small">▶ Ejecutar</button><button id="lua-close" class="icon-button">×</button></div></div>
-          <textarea id="lua-code" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off">-- Script Lua para la escena\nlocal objeto = engine.add_cube("Cubo Lua")\nengine.set_selected_position(0, 1, 0)\nprint("Objeto creado:", objeto)\n</textarea>
-          <pre id="lua-output" class="lua-output">Listo. Puedes usar engine.add_cube(nombre), engine.add_sphere(nombre), engine.select(nombre) y engine.set_selected_position(x, y, z).</pre>
-        </section>
+        <div id="viewport" class="viewport"><canvas id="scene-canvas"></canvas><div class="viewport-badge"><i data-lucide="box"></i><span id="viewport-label">VISTA 3D</span><em>• TOUCH</em></div><div id="empty-hint" class="empty-hint">Toca un objeto o crea uno nuevo</div>
+          <div id="play-controls" class="play-controls hidden"><div class="move-pad" id="move-pad"><span class="pad-center"></span><span class="pad-label north">▲</span><span class="pad-label south">▼</span><span class="pad-label west">◀</span><span class="pad-label east">▶</span></div><div class="look-hint">Arrastra aquí para mirar</div><button id="exit-play" class="exit-play"><i data-lucide="square"></i> Salir</button></div>
+        </div>
+        <div class="bottom-dock"><button class="dock-tab selected" data-tab="scene"><i data-lucide="layers-3"></i> Escena</button><button class="dock-tab" data-tab="lua"><i data-lucide="code-xml"></i> Script Lua</button><span class="dock-spacer"></span><span id="status-text" class="status-dot">● LISTO</span></div>
+        <section id="lua-panel" class="lua-panel hidden"><div class="lua-head"><div><b>Script Lua</b><span>Lua 5.3 · API MobiForge</span></div><div class="lua-actions"><button id="lua-example" class="button subdued small">Ejemplo</button><button id="lua-run" class="button run small"><i data-lucide="play"></i> Ejecutar</button><button id="lua-close" class="icon-button"><i data-lucide="x"></i></button></div></div><textarea id="lua-code" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off">-- Script Lua para la escena\nlocal objeto = engine.add_cube("Cubo Lua")\nengine.set_selected_position(0, 1, 0)\nprint("Objeto creado:", objeto)\n</textarea><pre id="lua-output" class="lua-output">Listo. Usa engine.add_cube(nombre), engine.add_sphere(nombre), engine.select(nombre), engine.set_selected_position(x, y, z) y print(...).</pre></section>
       </section>
-      <aside class="panel inspector-panel">
-        <div class="panel-heading"><span>INSPECTOR</span><button id="delete-button" class="icon-button danger" title="Eliminar selección">⌫</button></div>
+      <aside class="panel inspector-panel"><div class="panel-heading"><span>INSPECTOR</span><button id="delete-button" class="icon-button danger" title="Eliminar selección"><i data-lucide="trash-2"></i></button></div>
         <label class="field-label" for="object-name">Objeto seleccionado</label><input id="object-name" class="text-field" value="Sin selección" />
-        <div class="divider"></div>
-        <div class="section-title">TRANSFORMACIÓN</div>
+        <div class="divider"></div><div class="section-title">TRANSFORMACIÓN</div>
         <div class="axis-row"><span class="axis x-axis">X</span><label>Posición</label><input id="px" type="number" step="0.1" value="0" /><input id="py" type="number" step="0.1" value="0" /><input id="pz" type="number" step="0.1" value="0" /></div>
         <div class="axis-row"><span class="axis r-axis">↻</span><label>Rotación °</label><input id="rx" type="number" step="5" value="0" /><input id="ry" type="number" step="5" value="0" /><input id="rz" type="number" step="5" value="0" /></div>
         <div class="axis-row"><span class="axis s-axis">↗</span><label>Escala</label><input id="sx" type="number" step="0.1" value="1" /><input id="sy" type="number" step="0.1" value="1" /><input id="sz" type="number" step="0.1" value="1" /></div>
-        <div class="divider"></div><div class="section-title">MATERIAL</div>
-        <label class="field-label" for="material-color">Color</label><div class="color-row"><input id="material-color" type="color" value="#44d7a0"/><span id="color-value">#44D7A0</span></div>
-        <div class="inspector-foot">Los cambios se guardan en este dispositivo.</div>
+        <div class="divider"></div><div class="section-title">MATERIAL</div><label class="field-label" for="material-color">Color</label><div class="color-row"><input id="material-color" type="color" value="#44d7a0"/><span id="color-value">#44D7A0</span></div><div class="inspector-foot">Los cambios se guardan en este dispositivo.</div>
       </aside>
     </main>
   </div>
